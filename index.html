@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tekniplex — Categorización de Vidrios y Material Quebradizo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f4f0; --surface: #ffffff; --surface2: #eeede8;
+    --border: #d6d4cc; --border2: #c2c0b6;
+    --text: #1a1917; --text2: #5a5852; --text3: #8a887e;
+    --accent: #1a3a2a; --accent2: #2d6147; --accent-light: #e8f2ec;
+    --danger: #8b2020; --danger-light: #fdf0f0;
+    --warning: #7a4a00; --warning-light: #fef8ec;
+    --z1: #8b2020; --z1-bg: #fdf0f0;
+    --z2: #b84000; --z2-bg: #fff3ec;
+    --z3: #7a4a00; --z3-bg: #fef8ec;
+    --z4: #1a6b38; --z4-bg: #e8f2ec;
+    --mono: "IBM Plex Mono", monospace; --sans: "IBM Plex Sans", system-ui, sans-serif;
+  }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .app-header { background: var(--accent); color: white; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .app-header h1 { font-size: 13px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+  .header-right { display: flex; align-items: center; gap: 14px; }
+  .header-right span { font-size: 11px; opacity: 0.5; font-family: var(--mono); }
+  .mode-badge { font-size: 11px; font-family: var(--mono); padding: 3px 10px; border-radius: 10px; font-weight: 500; cursor: pointer; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.12); color: white; transition: background 0.15s; }
+  .mode-badge:hover { background: rgba(255,255,255,0.22); }
+  .mode-badge.edit-mode { background: #c8a227; border-color: #a07a10; color: #1a1000; }
+
+  .main { display: flex; height: calc(100vh - 53px); overflow: hidden; }
+  .sidebar { width: 215px; min-width: 215px; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 10px 0; }
+  .sidebar-label { font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); padding: 8px 16px 5px; }
+  .sidebar-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 16px; cursor: pointer; font-size: 13px; color: var(--text2); border-left: 2px solid transparent; transition: all 0.12s; }
+  .sidebar-item:hover { background: var(--surface2); color: var(--text); }
+  .sidebar-item.active { background: var(--accent-light); color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+  .sidebar-badge { font-family: var(--mono); font-size: 10px; background: var(--surface2); color: var(--text3); padding: 2px 6px; border-radius: 10px; }
+  .sidebar-item.active .sidebar-badge { background: var(--accent-light); color: var(--accent2); }
+  .sidebar-divider { height: 1px; background: var(--border); margin: 10px 0; }
+  .sidebar-add { font-size: 12px; color: var(--text3); padding: 8px 16px; cursor: pointer; }
+  .sidebar-add:hover { color: var(--accent); background: var(--surface2); }
+
+  .content { flex: 1; overflow-y: auto; }
+  .content-header { padding: 18px 24px 14px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; position: sticky; top: 0; z-index: 50; }
+  .content-header h2 { font-size: 17px; font-weight: 500; }
+  .content-header p { font-size: 12px; color: var(--text3); margin-top: 3px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border2); background: var(--surface); color: var(--text); font-family: var(--sans); transition: all 0.1s; white-space: nowrap; }
+  .btn:hover { background: var(--surface2); }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-danger { background: var(--danger-light); color: var(--danger); border-color: #e0b0b0; }
+  .btn-sm { padding: 5px 9px; font-size: 11px; }
+
+  /* ── ZONE PILLS ── */
+  .zone-pill { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+  .zone-z1 { background: var(--z1-bg); color: var(--z1); border: 1px solid #e8b0b0; }
+  .zone-z2 { background: var(--z2-bg); color: var(--z2); border: 1px solid #f0c090; }
+  .zone-z3 { background: var(--z3-bg); color: var(--z3); border: 1px solid #e0c070; }
+  .zone-z4 { background: var(--z4-bg); color: var(--z4); border: 1px solid #a8cdb8; }
+  .zone-none { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); }
+
+  /* ── MACHINES GRID ── */
+  .machines-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 13px; padding: 18px 22px; }
+  .machine-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: box-shadow 0.15s; }
+  .machine-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
+  .card-header { padding: 11px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .card-id { font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--accent); }
+  .card-body { padding: 11px 14px; }
+  .card-name { font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+  .mat-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+  .mat-chip { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-family: var(--mono); }
+  .mat-chip.z1 { background: var(--z1-bg); color: var(--z1); border: 1px solid #e8b0b0; }
+  .mat-chip.z2 { background: var(--z2-bg); color: var(--z2); border: 1px solid #f0c090; }
+  .mat-chip.z3 { background: var(--z3-bg); color: var(--z3); border: 1px solid #e0c070; }
+  .mat-chip.z4 { background: var(--z4-bg); color: var(--z4); border: 1px solid #a8cdb8; }
+  .mat-chip.none { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); }
+  .card-meta { font-size: 11px; color: var(--text3); }
+  .card-actions { padding: 9px 14px; border-top: 1px solid var(--border); display: flex; gap: 7px; }
+
+  /* ── MODAL ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,15,15,0.45); z-index: 300; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 10px; width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+  .modal-header { padding: 17px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--surface); z-index: 10; }
+  .modal-header h3 { font-size: 15px; font-weight: 500; }
+  .modal-body { padding: 20px; }
+  .modal-footer { padding: 13px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; position: sticky; bottom: 0; background: var(--surface); }
+  .close-btn { background: none; border: none; cursor: pointer; font-size: 20px; color: var(--text3); line-height: 1; padding: 0; }
+  .close-btn:hover { color: var(--text); }
+
+  /* ── FORM ── */
+  .form-group { margin-bottom: 13px; }
+  .form-label { font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 5px; display: block; text-transform: uppercase; letter-spacing: 0.07em; }
+  .form-input, .form-select, .form-textarea { width: 100%; padding: 8px 11px; border: 1px solid var(--border2); border-radius: 6px; font-size: 13px; font-family: var(--sans); background: var(--surface); color: var(--text); transition: border-color 0.1s; }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--accent); }
+  .form-textarea { min-height: 68px; resize: vertical; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ── RADIO / SELECT LISTS ── */
+  .radio-list { display: flex; flex-direction: column; gap: 6px; }
+  .radio-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; transition: all 0.1s; }
+  .radio-item:hover { border-color: var(--border2); background: var(--surface2); }
+  .radio-item.selected-z1 { border-color: var(--z1); background: var(--z1-bg); }
+  .radio-item.selected-z2 { border-color: var(--z2); background: var(--z2-bg); }
+  .radio-item.selected-z3 { border-color: var(--z3); background: var(--z3-bg); }
+  .radio-item.selected-z4 { border-color: var(--z4); background: var(--z4-bg); }
+  .radio-item.selected-elem { border-color: var(--accent); background: var(--accent-light); }
+  .radio-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+  .radio-dot.checked { border-color: var(--accent); background: var(--accent); }
+  .radio-dot.checked::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: white; }
+  .radio-label { font-size: 13px; }
+  .radio-label .code { font-family: var(--mono); font-size: 11px; font-weight: 600; margin-right: 6px; }
+  .radio-label .desc { color: var(--text2); }
+
+  /* ── MATERIAL ITEMS IN MODAL ── */
+  .mat-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .mat-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text3); }
+  .mat-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 14px; margin-bottom: 10px; }
+  .mat-item-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .mat-item-num { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--text3); }
+  .mat-item-del { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--text3); padding: 0; line-height: 1; }
+  .mat-item-del:hover { color: var(--danger); }
+  .section-divider { height: 1px; background: var(--border); margin: 16px 0; }
+  .section-title-inline { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text3); margin-bottom: 10px; display: block; }
+
+  /* ── INSPECCIONES ── */
+  .insp-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .insp-item { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; display: flex; gap: 10px; align-items: flex-start; }
+  .insp-date { font-family: var(--mono); font-size: 11px; color: var(--accent); font-weight: 600; min-width: 90px; margin-top: 1px; }
+  .insp-text { font-size: 12px; color: var(--text2); flex: 1; line-height: 1.5; }
+  .insp-del { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 15px; padding: 0; line-height: 1; }
+  .insp-del:hover { color: var(--danger); }
+  .insp-add-row { display: flex; flex-direction: column; gap: 8px; background: var(--surface2); border: 1px dashed var(--border2); border-radius: 7px; padding: 12px; }
+  .insp-add-row .form-row { margin: 0; }
+
+  /* ── DETAIL VIEW ── */
+  .detail-grid { padding: 18px 22px; }
+  .detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; max-width: 760px; }
+  .detail-card-header { padding: 16px 20px; background: var(--accent); color: white; display: flex; align-items: center; justify-content: space-between; }
+  .detail-card-header .did { font-family: var(--mono); font-size: 20px; font-weight: 500; }
+  .detail-card-header .dname { font-size: 13px; opacity: 0.75; margin-top: 2px; }
+  .detail-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .detail-section:last-child { border-bottom: none; }
+  .detail-section-title { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin-bottom: 12px; }
+  .detail-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-key { color: var(--text3); font-size: 12px; min-width: 130px; }
+  .detail-val { text-align: right; color: var(--text); max-width: 60%; }
+  .detail-val.mono { font-family: var(--mono); font-size: 12px; }
+
+  .mat-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+  .mat-table th { text-align: left; color: var(--text3); font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 6px 10px; border-bottom: 2px solid var(--border); }
+  .mat-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text2); }
+  .mat-table tr:last-child td { border-bottom: none; }
+  .mat-table td:first-child { color: var(--text); font-weight: 500; }
+
+  .insp-history { display: flex; flex-direction: column; gap: 8px; }
+  .insp-history-item { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .insp-history-item:last-child { border-bottom: none; }
+  .insp-history-date { font-family: var(--mono); font-size: 11px; color: var(--accent); font-weight: 600; min-width: 90px; margin-top: 1px; }
+  .insp-history-text { font-size: 13px; color: var(--text2); flex: 1; line-height: 1.5; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+  .empty-state .icon { font-size: 36px; margin-bottom: 10px; }
+  .empty-state p { font-size: 13px; margin-top: 6px; }
+  .toast { position: fixed; bottom: 22px; right: 22px; background: var(--accent); color: white; padding: 11px 16px; border-radius: 8px; font-size: 13px; z-index: 999; opacity: 0; transform: translateY(6px); transition: all 0.2s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .pw-screen { display: none; position: fixed; inset: 0; background: var(--accent); z-index: 400; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+  .pw-screen.open { display: flex; }
+  .pw-screen h2 { color: white; font-size: 16px; font-weight: 400; opacity: 0.85; }
+  .pw-screen input { padding: 10px 16px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; font-size: 14px; font-family: var(--mono); letter-spacing: 0.15em; text-align: center; width: 200px; outline: none; }
+  .pw-screen input::placeholder { opacity: 0.4; letter-spacing: 0.05em; }
+  .pw-error { color: #f5a0a0; font-size: 12px; min-height: 16px; }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  @media (max-width: 600px) {
+    .sidebar { width: 145px; min-width: 145px; }
+    .machines-grid { grid-template-columns: 1fr; padding: 12px; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="pw-screen" id="pw-screen">
+  <h2>Contraseña de edición</h2>
+  <input type="password" id="pw-input" placeholder="contraseña" onkeydown="if(event.key==='Enter')checkPw()">
+  <p class="pw-error" id="pw-error"></p>
+  <div style="display:flex;gap:10px;">
+    <button class="btn" onclick="closePw()" style="background:rgba(255,255,255,0.12);color:white;border-color:rgba(255,255,255,0.25);">Cancelar</button>
+    <button class="btn" onclick="checkPw()" style="background:#c8a227;border-color:#a07a10;color:#1a1000;font-weight:600;">Entrar</button>
+  </div>
+</div>
+
+<div class="app-header">
+  <h1>Tekniplex — Categorización de Vidrios y Material Quebradizo</h1>
+  <div class="header-right">
+    <span id="header-count"></span>
+    <button class="mode-badge" id="mode-badge" onclick="toggleEditMode()">Solo lectura</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="content">
+    <div class="content-header">
+      <div><h2 id="section-title">Selecciona una subplanta</h2><p id="section-sub">Usa el menú lateral para navegar</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;" id="header-actions"></div>
+    </div>
+    <div id="main-content"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-title">Ficha</h3><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const EDIT_PASSWORD = 'tekniplex2025';
+
+// ── ZONIFICACIÓN ──────────────────────────────────────────────
+const ZONAS = [
+  { id:'z1', label:'Zona 1', desc:'Crítico alto',  cls:'z1' },
+  { id:'z2', label:'Zona 2', desc:'Crítico',        cls:'z2' },
+  { id:'z3', label:'Zona 3', desc:'No crítico',     cls:'z3' },
+  { id:'z4', label:'Zona 4', desc:'Bajo riesgo',    cls:'z4' },
+];
+const ZONA_LABEL = { z1:'Zona 1 — Crítico alto', z2:'Zona 2 — Crítico', z3:'Zona 3 — No crítico', z4:'Zona 4 — Bajo riesgo', none:'Sin zonificar' };
+const ZONA_ORDER = { z1:4, z2:3, z3:2, z4:1, none:0 };
+
+// ── ELEMENTOS ─────────────────────────────────────────────────
+const ELEMENTOS = [
+  { id:'LT', desc:'Lámpara tubo con protección' },
+  { id:'GE', desc:'Gabinete de emergencia' },
+  { id:'RP', desc:'Reloj de pared' },
+  { id:'RE', desc:'Retrovisor y espejo' },
+  { id:'LE', desc:'Lámpara de emergencia' },
+  { id:'LB', desc:'Lámpara bombillo con protección' },
+  { id:'MA', desc:'Máquina con acrílico' },
+  { id:'PT', desc:'Plano de evacuación / Tablero' },
+  { id:'AC', desc:'Acrílicos en zonas comunes' },
+  { id:'VI', desc:'Vidrios de puertas y ventanas' },
+];
+
+// ── DATOS INICIALES ───────────────────────────────────────────
+const SUBPLANTAS_DEFAULT = [
+  { id:'inyeccion',   nombre:'Inyección',         maquinas:['YN03','YN05','YN06','YN09','YN11','YN12','YN13','YN15','YN16','YN17','YN18'] },
+  { id:'laminacion',  nombre:'Laminación-Barrera', maquinas:['LA01','LA04','LA09','LA12','LA14','LA15','CO01'] },
+  { id:'encartonado', nombre:'Encartonado',        maquinas:['WE07','WE08','WE09','WE10','WE12','WE13','WE14'] },
+  { id:'mangas',      nombre:'Mangas',             maquinas:['MA01','MA05','MA06','MA09','MA12'] },
+  { id:'omv',         nombre:'OMV',                maquinas:['OMV50','OMV87','OMV51','OMV77','OMV82','OMV78','OMV79','OMV84','OMV83','OMV52','OMV86','OMV88','OMV75','OMV40','OM80','OM85','OM70'] },
+  { id:'industrial',  nombre:'Industrial',         maquinas:['TI32','TI28','TI08','TI35','TI25','TI18','TI11','TI03','TI07','TI02','TI36','TE22','TE08','TE07','TE02','TE32','TE06','TE29'] },
+  { id:'impresion',   nombre:'Impresión',          maquinas:['IM18','IM01','IM05','IM06','IM17','IM22'] },
+  { id:'papel',       nombre:'Papel 1 y 3',        maquinas:['VI02','UF11','UF14','UF16','UF05','UF35','UF32','UF10','UF27','UF28','UF29','UF30','UF34','UF37','UF38','UF31','UF12','VR01','VR02','VR04','VR07'] },
+  { id:'pelicula',    nombre:'Película',           maquinas:['HF05','HF03','HF04','HF07','HF10','HF06'] },
+  { id:'etiqueta',    nombre:'Etiqueta',           maquinas:['ET04','ET05','ET06','ET07','ET09','ET02'] },
+  { id:'foil',        nombre:'Foil',               maquinas:['FRL05','FRL06','FRL01','FRL04','FRL09','FRL10','FRL17','FRL13','FRL03','FRL02'] },
+  { id:'maquilas',    nombre:'Maquilas',           maquinas:['ULMA'] },
+];
+
+// ── ESTADO ────────────────────────────────────────────────────
+let state = { subplantas:[], fichas:{}, currentPlanta:null, currentMaquina:null, editMode:false, editingMaquina:null };
+let editMateriales = [];
+let editInspecciones = [];
+
+// ── STORAGE ───────────────────────────────────────────────────
+function saveLocal() {
+  try {
+    localStorage.setItem('tkx_sp4', JSON.stringify(state.subplantas));
+    localStorage.setItem('tkx_fc4', JSON.stringify(state.fichas));
+  } catch(e) {}
+}
+function loadLocal() {
+  try {
+    const sp = localStorage.getItem('tkx_sp4');
+    const fc = localStorage.getItem('tkx_fc4');
+    state.subplantas = sp ? JSON.parse(sp) : JSON.parse(JSON.stringify(SUBPLANTAS_DEFAULT));
+    state.fichas     = fc ? JSON.parse(fc) : {};
+  } catch(e) {
+    state.subplantas = JSON.parse(JSON.stringify(SUBPLANTAS_DEFAULT));
+    state.fichas = {};
+  }
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function worstZona(materiales) {
+  if (!materiales || !materiales.length) return 'none';
+  return materiales.reduce((w, m) => (ZONA_ORDER[m.zona]||0) > (ZONA_ORDER[w]||0) ? m.zona : w, 'none');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function today() { return new Date().toISOString().slice(0,10); }
+
+// ── MODO EDICIÓN ──────────────────────────────────────────────
+function toggleEditMode() {
+  if (state.editMode) { state.editMode = false; render(); }
+  else {
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-error').textContent = '';
+    document.getElementById('pw-screen').classList.add('open');
+    setTimeout(() => document.getElementById('pw-input').focus(), 100);
+  }
+}
+function checkPw() {
+  if (document.getElementById('pw-input').value === EDIT_PASSWORD) {
+    state.editMode = true;
+    document.getElementById('pw-screen').classList.remove('open');
+    render(); showToast('Modo edición activado');
+  } else {
+    document.getElementById('pw-error').textContent = 'Contraseña incorrecta';
+    document.getElementById('pw-input').value = '';
+  }
+}
+function closePw() { document.getElementById('pw-screen').classList.remove('open'); }
+
+// ── RENDER ────────────────────────────────────────────────────
+function render() {
+  renderSidebar(); renderContent();
+  const total = state.subplantas.reduce((a,s)=>a+s.maquinas.length,0);
+  document.getElementById('header-count').textContent = state.subplantas.length+' subplantas · '+total+' máquinas';
+  const badge = document.getElementById('mode-badge');
+  badge.textContent = state.editMode ? '✏ Modo edición' : 'Solo lectura';
+  badge.className   = 'mode-badge'+(state.editMode?' edit-mode':'');
+}
+
+function renderSidebar() {
+  document.getElementById('sidebar').innerHTML =
+    '<div class="sidebar-label">Subplantas</div>'+
+    state.subplantas.map(p=>
+      '<div class="sidebar-item '+(state.currentPlanta===p.id?'active':'')+'" onclick="selectPlanta(''+p.id+'')">'+
+      '<span>'+p.nombre+'</span><span class="sidebar-badge">'+p.maquinas.length+'</span></div>'
+    ).join('')+
+    (state.editMode ? '<div class="sidebar-divider"></div><div class="sidebar-add" onclick="showAddSubplanta()">+ Nueva subplanta</div>' : '');
+}
+
+function selectPlanta(id) { state.currentPlanta=id; state.currentMaquina=null; render(); }
+
+function renderContent() {
+  if (state.currentMaquina) { renderDetail(); return; }
+  if (!state.currentPlanta) {
+    document.getElementById('section-title').textContent='Selecciona una subplanta';
+    document.getElementById('section-sub').textContent='Usa el menú lateral para navegar';
+    document.getElementById('header-actions').innerHTML='';
+    document.getElementById('main-content').innerHTML='<div class="empty-state"><div class="icon">🏭</div><p>Selecciona una subplanta para ver las fichas.</p></div>';
+    return;
+  }
+  const planta = state.subplantas.find(p=>p.id===state.currentPlanta);
+  document.getElementById('section-title').textContent = planta.nombre;
+  document.getElementById('section-sub').textContent   = planta.maquinas.length+' máquinas registradas';
+  document.getElementById('header-actions').innerHTML  = state.editMode
+    ? '<button class="btn btn-sm" onclick="showAddMaquina()">+ Máquina</button><button class="btn btn-sm btn-danger" onclick="confirmDeletePlanta(''+planta.id+'')">Eliminar subplanta</button>'
+    : '';
+
+  const grid = planta.maquinas.map(mid=>{
+    const f    = state.fichas[mid]||{};
+    const mats = f.materiales||[];
+    const zona = worstZona(mats);
+    const chips = mats.length
+      ? '<div class="mat-chips">'+mats.slice(0,4).map(m=>'<span class="mat-chip '+(m.zona||'none')+'">'+esc(m.elemento||m.tipo||'—')+'</span>').join('')+(mats.length>4?'<span class="mat-chip none">+'+( mats.length-4)+'</span>':'')+'</div>'
+      : '<p style="font-size:11px;color:var(--text3);margin-bottom:6px;">Sin materiales registrados</p>';
+    const btn = state.editMode
+      ? '<button class="btn btn-sm" onclick="editMaquina(''+mid+'')">✏ Editar</button><button class="btn btn-sm btn-danger" onclick="confirmDeleteMaquina(''+mid+'')">Eliminar</button>'
+      : '<button class="btn btn-sm btn-primary" onclick="verDetalle(''+mid+'')">Ver ficha completa</button>';
+    return '<div class="machine-card"><div class="card-header"><span class="card-id">'+esc(mid)+'</span><span class="zone-pill zone-'+zona+'">'+esc(ZONA_LABEL[zona]||'Sin zonificar')+'</span></div>'+
+      '<div class="card-body"><div class="card-name">'+esc(f.nombre||'Sin nombre registrado')+'</div>'+chips+
+      '<div class="card-meta">'+mats.length+' material'+(mats.length!==1?'es':'')+' · Resp: '+esc(f.responsable||'—')+'</div></div>'+
+      '<div class="card-actions">'+btn+'</div></div>';
+  }).join('');
+
+  document.getElementById('main-content').innerHTML = '<div class="machines-grid">'+grid+'</div>';
+}
+
+// ── DETALLE ───────────────────────────────────────────────────
+function verDetalle(mid) { state.currentMaquina=mid; render(); }
+
+function renderDetail() {
+  const mid   = state.currentMaquina;
+  const f     = state.fichas[mid]||{};
+  const mats  = f.materiales||[];
+  const insps = f.inspecciones||[];
+  const planta= state.subplantas.find(p=>p.maquinas.includes(mid));
+  const zona  = worstZona(mats);
+
+  document.getElementById('section-title').textContent = mid;
+  document.getElementById('section-sub').textContent   = planta?planta.nombre:'';
+  document.getElementById('header-actions').innerHTML  = '<button class="btn btn-sm" onclick="state.currentMaquina=null;render()">← Volver</button>';
+
+  const matsTable = mats.length
+    ? '<table class="mat-table"><thead><tr><th>#</th><th>Elemento</th><th>Tipo de material</th><th>Ubicación</th><th>Cantidad</th><th>Zonificación</th><th>Observación</th></tr></thead><tbody>'+
+      mats.map((m,i)=>'<tr><td style="color:var(--text3);font-family:var(--mono)">'+(i+1)+'</td><td>'+esc(m.elemento||'—')+'</td><td>'+esc(m.tipo||'—')+'</td><td>'+esc(m.ubicacion||'—')+'</td><td>'+esc(m.cantidad||'—')+'</td><td><span class="zone-pill zone-'+(m.zona||'none')+'">'+esc(ZONA_LABEL[m.zona]||'Sin zonificar')+'</span></td><td>'+esc(m.obs||'—')+'</td></tr>').join('')+
+      '</tbody></table>'
+    : '<p style="font-size:13px;color:var(--text3);">No hay materiales registrados.</p>';
+
+  const inspHtml = insps.length
+    ? '<div class="insp-history">'+insps.slice().reverse().map(i=>
+        '<div class="insp-history-item"><span class="insp-history-date">'+esc(i.fecha)+'</span><span class="insp-history-text">'+esc(i.texto)+'</span></div>'
+      ).join('')+'</div>'
+    : '<p style="font-size:13px;color:var(--text3);">No hay inspecciones registradas.</p>';
+
+  document.getElementById('main-content').innerHTML =
+    '<div class="detail-grid"><div class="detail-card">'+
+    '<div class="detail-card-header"><div><div class="did">'+esc(mid)+'</div><div class="dname">'+esc(f.nombre||'Sin nombre')+'</div></div>'+
+    '<span class="zone-pill zone-'+zona+'" style="font-size:12px;padding:5px 12px;">'+esc(ZONA_LABEL[zona])+'</span></div>'+
+    '<div class="detail-section"><div class="detail-section-title">Información general</div>'+
+    '<div class="detail-row"><span class="detail-key">Responsable de área</span><span class="detail-val">'+esc(f.responsable||'—')+'</span></div>'+
+    '<div class="detail-row"><span class="detail-key">Última revisión</span><span class="detail-val mono">'+esc(f.fecha||'—')+'</span></div>'+
+    '<div class="detail-row"><span class="detail-key">Próxima inspección</span><span class="detail-val mono">'+esc(f.proxima||'—')+'</span></div>'+
+    '<div class="detail-row"><span class="detail-key">Última actualización</span><span class="detail-val mono">'+esc(f.updated||'—')+'</span></div></div>'+
+    '<div class="detail-section"><div class="detail-section-title">Materiales quebradizos ('+mats.length+')</div>'+matsTable+'</div>'+
+    '<div class="detail-section"><div class="detail-section-title">Historial de inspecciones ('+insps.length+')</div>'+inspHtml+'</div>'+
+    (f.observaciones ? '<div class="detail-section"><div class="detail-section-title">Observaciones generales</div><p style="font-size:13px;color:var(--text2);line-height:1.6;">'+esc(f.observaciones)+'</p></div>' : '')+
+    '</div></div>';
+}
+
+// ── EDITAR MÁQUINA ────────────────────────────────────────────
+function editMaquina(mid) {
+  state.editingMaquina = mid;
+  const f = state.fichas[mid]||{};
+  editMateriales   = JSON.parse(JSON.stringify(f.materiales||[]));
+  editInspecciones = JSON.parse(JSON.stringify(f.inspecciones||[]));
+  renderEditModal(f);
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function renderEditModal(f) {
+  const mid = state.editingMaquina;
+  document.getElementById('modal-title').textContent = 'Editar ficha — '+mid;
+  document.getElementById('modal-body').innerHTML =
+    '<div class="form-row">'+
+    '<div class="form-group"><label class="form-label">Nombre / descripción</label><input class="form-input" id="f-nombre" value="'+esc(f.nombre||'')+'" placeholder="ej: Inyectora principal"></div>'+
+    '<div class="form-group"><label class="form-label">Responsable de área</label><input class="form-input" id="f-responsable" value="'+esc(f.responsable||'')+'" placeholder="Nombre"></div>'+
+    '</div>'+
+    '<div class="form-row">'+
+    '<div class="form-group"><label class="form-label">Fecha última revisión</label><input class="form-input" type="date" id="f-fecha" value="'+esc(f.fecha||'')+'"></div>'+
+    '<div class="form-group"><label class="form-label">Próxima inspección</label><input class="form-input" type="date" id="f-proxima" value="'+esc(f.proxima||'')+'"></div>'+
+    '</div>'+
+    '<div class="form-group"><label class="form-label">Observaciones generales</label><textarea class="form-textarea" id="f-obs" placeholder="Notas generales de la máquina...">'+esc(f.observaciones||'')+'</textarea></div>'+
+
+    '<div class="section-divider"></div>'+
+    '<div class="mat-section-header"><span class="mat-section-title">Historial de inspecciones</span><button class="btn btn-sm btn-primary" onclick="addInspItem()">+ Agregar inspección</button></div>'+
+    '<div id="insp-list"></div>'+
+
+    '<div class="section-divider"></div>'+
+    '<div class="mat-section-header"><span class="mat-section-title">Materiales quebradizos</span><button class="btn btn-sm btn-primary" onclick="addMatItem()">+ Agregar material</button></div>'+
+    '<div id="mat-list"></div>';
+
+  document.getElementById('modal-footer').innerHTML =
+    '<button class="btn" onclick="closeModal()">Cancelar</button>'+
+    '<button class="btn btn-primary" onclick="saveFicha()">Guardar todo</button>';
+
+  renderInspList();
+  renderMatList();
+}
+
+// ── INSPECCIONES EN MODAL ─────────────────────────────────────
+function renderInspList() {
+  const c = document.getElementById('insp-list');
+  if (!c) return;
+  if (!editInspecciones.length) {
+    c.innerHTML = '<p style="font-size:12px;color:var(--text3);text-align:center;padding:10px 0;">Sin inspecciones. Toca "+ Agregar inspección".</p>';
+    return;
+  }
+  c.innerHTML = '<div class="insp-list">'+
+    editInspecciones.slice().reverse().map((insp,ri)=>{
+      const i = editInspecciones.length-1-ri;
+      return '<div class="insp-item">'+
+        '<span class="insp-date">'+esc(insp.fecha)+'</span>'+
+        '<span class="insp-text">'+esc(insp.texto)+'</span>'+
+        '<button class="insp-del" onclick="delInspItem('+i+')">×</button>'+
+        '</div>';
+    }).join('')+'</div>'+
+    '<div class="insp-add-row" id="insp-add-row" style="display:none;">'+
+    '<div class="form-row">'+
+    '<div class="form-group"><label class="form-label">Fecha</label><input class="form-input" type="date" id="insp-new-fecha" value="'+today()+'"></div>'+
+    '<div></div></div>'+
+    '<div class="form-group"><label class="form-label">Observación de inspección</label><textarea class="form-textarea" id="insp-new-texto" placeholder="Describe los hallazgos, estado del material, acciones tomadas..." style="min-height:60px;"></textarea></div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-sm" onclick="hideInspForm()">Cancelar</button><button class="btn btn-sm btn-primary" onclick="confirmAddInsp()">Guardar inspección</button></div>'+
+    '</div>';
+}
+
+function addInspItem() {
+  renderInspList();
+  const row = document.getElementById('insp-add-row');
+  if (row) { row.style.display='flex'; row.style.flexDirection='column'; setTimeout(()=>{ const t=document.getElementById('insp-new-texto'); if(t)t.focus(); },100); }
+  else {
+    // no inspections yet — show form directly
+    const c = document.getElementById('insp-list');
+    c.innerHTML = '<div class="insp-add-row" style="display:flex;flex-direction:column;">'+
+      '<div class="form-row">'+
+      '<div class="form-group"><label class="form-label">Fecha</label><input class="form-input" type="date" id="insp-new-fecha" value="'+today()+'"></div>'+
+      '<div></div></div>'+
+      '<div class="form-group"><label class="form-label">Observación de inspección</label><textarea class="form-textarea" id="insp-new-texto" placeholder="Describe los hallazgos, estado del material, acciones tomadas..." style="min-height:60px;"></textarea></div>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-sm" onclick="renderInspList()">Cancelar</button><button class="btn btn-sm btn-primary" onclick="confirmAddInsp()">Guardar inspección</button></div>'+
+      '</div>';
+    setTimeout(()=>{ const t=document.getElementById('insp-new-texto'); if(t)t.focus(); },100);
+  }
+}
+function hideInspForm() { renderInspList(); }
+function confirmAddInsp() {
+  const fecha = (document.getElementById('insp-new-fecha')||{}).value || today();
+  const texto = ((document.getElementById('insp-new-texto')||{}).value||'').trim();
+  if (!texto) { showToast('Escribe la observación antes de guardar'); return; }
+  editInspecciones.push({ fecha, texto });
+  renderInspList();
+  showToast('Inspección agregada');
+}
+function delInspItem(i) { editInspecciones.splice(i,1); renderInspList(); }
+
+// ── MATERIALES EN MODAL ───────────────────────────────────────
+function renderMatList() {
+  const c = document.getElementById('mat-list');
+  if (!c) return;
+  if (!editMateriales.length) {
+    c.innerHTML = '<p style="font-size:12px;color:var(--text3);text-align:center;padding:12px 0;">Sin materiales. Toca "+ Agregar material".</p>';
+    return;
+  }
+  c.innerHTML = editMateriales.map((m,i)=>
+    '<div class="mat-item">'+
+    '<div class="mat-item-header"><span class="mat-item-num">Material #'+(i+1)+'</span><button class="mat-item-del" onclick="delMatItem('+i+')">×</button></div>'+
+
+    // ELEMENTO — radio list
+    '<div class="form-group"><label class="form-label">Elemento</label>'+
+    '<div class="radio-list" id="elem-list-'+i+'">'+
+    ELEMENTOS.map(el=>{
+      const sel = m.elemento===el.id;
+      return '<div class="radio-item'+(sel?' selected-elem':'')+'" onclick="selectElem('+i+',''+el.id+'')">'+
+        '<div class="radio-dot'+(sel?' checked':'')+'"></div>'+
+        '<span class="radio-label"><span class="code">'+el.id+'</span><span class="desc">'+el.desc+'</span></span>'+
+        '</div>';
+    }).join('')+'</div></div>'+
+
+    '<div class="form-group"><label class="form-label">Descripción adicional del material</label>'+
+    '<input class="form-input" value="'+esc(m.tipo||'')+'" placeholder="ej: Visor de nivel, termómetro de mercurio..." onchange="editMateriales['+i+'].tipo=this.value"></div>'+
+
+    '<div class="form-row">'+
+    '<div class="form-group"><label class="form-label">Ubicación en la máquina</label>'+
+    '<input class="form-input" value="'+esc(m.ubicacion||'')+'" placeholder="ej: Panel frontal, tolva..." onchange="editMateriales['+i+'].ubicacion=this.value"></div>'+
+    '<div class="form-group"><label class="form-label">Cantidad</label>'+
+    '<input class="form-input" value="'+esc(m.cantidad||'')+'" placeholder="ej: 2 unidades" onchange="editMateriales['+i+'].cantidad=this.value"></div>'+
+    '</div>'+
+
+    // ZONIFICACIÓN — radio list
+    '<div class="form-group"><label class="form-label">Zonificación</label>'+
+    '<div class="radio-list" id="zona-list-'+i+'">'+
+    ZONAS.map(z=>{
+      const sel = m.zona===z.id;
+      return '<div class="radio-item'+(sel?' selected-'+z.id:'')+'" onclick="selectZona('+i+',''+z.id+'')">'+
+        '<div class="radio-dot'+(sel?' checked':'')+'"></div>'+
+        '<span class="radio-label"><span class="code">'+z.label+'</span><span class="desc">— '+z.desc+'</span></span>'+
+        '</div>';
+    }).join('')+'</div></div>'+
+
+    '<div class="form-group" style="margin-bottom:0"><label class="form-label">Observación / plan de acción</label>'+
+    '<input class="form-input" value="'+esc(m.obs||'')+'" placeholder="ej: Requiere reemplazo, en buen estado..." onchange="editMateriales['+i+'].obs=this.value"></div>'+
+    '</div>'
+  ).join('');
+}
+
+function selectElem(i, elemId) {
+  editMateriales[i].elemento = elemId;
+  // update UI only for this mat-item
+  const list = document.getElementById('elem-list-'+i);
+  if (!list) return;
+  list.querySelectorAll('.radio-item').forEach(item => {
+    const code = item.querySelector('.code').textContent;
+    const sel  = code===elemId;
+    item.className = 'radio-item'+(sel?' selected-elem':'');
+    item.querySelector('.radio-dot').className = 'radio-dot'+(sel?' checked':'');
+  });
+}
+function selectZona(i, zonaId) {
+  editMateriales[i].zona = zonaId;
+  const list = document.getElementById('zona-list-'+i);
+  if (!list) return;
+  list.querySelectorAll('.radio-item').forEach(item => {
+    const code = item.querySelector('.code').textContent.replace('Zona ','z').replace(' ','');
+    // match by position
+  });
+  // re-render just that material list item zona section
+  const list2 = document.getElementById('zona-list-'+i);
+  if (!list2) return;
+  const items = list2.querySelectorAll('.radio-item');
+  ZONAS.forEach((z,zi)=>{
+    const sel = z.id===zonaId;
+    items[zi].className = 'radio-item'+(sel?' selected-'+z.id:'');
+    items[zi].querySelector('.radio-dot').className = 'radio-dot'+(sel?' checked':'');
+  });
+}
+
+function addMatItem() {
+  editMateriales.push({elemento:'',tipo:'',ubicacion:'',cantidad:'',zona:'',obs:''});
+  renderMatList();
+  setTimeout(()=>{
+    const items = document.querySelectorAll('.mat-item');
+    if (items.length) items[items.length-1].scrollIntoView({behavior:'smooth',block:'center'});
+  },60);
+}
+function delMatItem(i) { editMateriales.splice(i,1); renderMatList(); }
+
+function saveFicha() {
+  // capture current text input values
+  document.querySelectorAll('.mat-item').forEach((item,i)=>{
+    const inputs = item.querySelectorAll('input[onchange], textarea[onchange]');
+    // inputs in order: tipo, ubicacion, cantidad, obs
+    const vals = Array.from(item.querySelectorAll('.form-input:not([readonly]), .form-textarea'));
+    // find by placeholder pattern
+    item.querySelectorAll('input').forEach(inp=>{
+      if (inp.placeholder && inp.placeholder.includes('Visor')) editMateriales[i].tipo      = inp.value;
+      if (inp.placeholder && inp.placeholder.includes('Panel'))  editMateriales[i].ubicacion = inp.value;
+      if (inp.placeholder && inp.placeholder.includes('unidad')) editMateriales[i].cantidad  = inp.value;
+      if (inp.placeholder && inp.placeholder.includes('buen'))   editMateriales[i].obs       = inp.value;
+    });
+  });
+  const mid = state.editingMaquina;
+  state.fichas[mid] = {
+    nombre:       document.getElementById('f-nombre').value,
+    responsable:  document.getElementById('f-responsable').value,
+    fecha:        document.getElementById('f-fecha').value,
+    proxima:      document.getElementById('f-proxima').value,
+    observaciones:document.getElementById('f-obs').value,
+    materiales:   JSON.parse(JSON.stringify(editMateriales)),
+    inspecciones: JSON.parse(JSON.stringify(editInspecciones)),
+    updated:      today(),
+  };
+  saveLocal(); closeModal(); render();
+  showToast('Ficha de '+mid+' guardada — '+editMateriales.length+' materiales, '+editInspecciones.length+' inspecciones');
+}
+
+// ── ADD MAQUINA ───────────────────────────────────────────────
+function showAddMaquina() {
+  const planta = state.subplantas.find(p=>p.id===state.currentPlanta);
+  document.getElementById('modal-title').textContent = 'Agregar máquina — '+planta.nombre;
+  document.getElementById('modal-body').innerHTML =
+    '<div class="form-group"><label class="form-label">Código de máquina</label>'+
+    '<input class="form-input" id="new-mid" placeholder="ej: YN20" style="font-family:var(--mono);text-transform:uppercase;"></div>';
+  document.getElementById('modal-footer').innerHTML =
+    '<button class="btn" onclick="closeModal()">Cancelar</button>'+
+    '<button class="btn btn-primary" onclick="addMaquina()">Agregar</button>';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function addMaquina() {
+  const mid = document.getElementById('new-mid').value.trim().toUpperCase();
+  if (!mid) return;
+  const planta = state.subplantas.find(p=>p.id===state.currentPlanta);
+  if (planta.maquinas.includes(mid)) { showToast('Esa máquina ya existe'); return; }
+  planta.maquinas.push(mid);
+  saveLocal(); closeModal(); render();
+  showToast('Máquina '+mid+' agregada');
+}
+
+// ── ADD SUBPLANTA ─────────────────────────────────────────────
+function showAddSubplanta() {
+  document.getElementById('modal-title').textContent = 'Nueva subplanta';
+  document.getElementById('modal-body').innerHTML =
+    '<div class="form-group"><label class="form-label">Nombre de la subplanta</label>'+
+    '<input class="form-input" id="new-sp-nombre" placeholder="ej: Extrusión"></div>';
+  document.getElementById('modal-footer').innerHTML =
+    '<button class="btn" onclick="closeModal()">Cancelar</button>'+
+    '<button class="btn btn-primary" onclick="addSubplanta()">Crear</button>';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function addSubplanta() {
+  const nombre = document.getElementById('new-sp-nombre').value.trim();
+  if (!nombre) return;
+  const id = nombre.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  state.subplantas.push({id,nombre,maquinas:[]});
+  saveLocal(); closeModal(); state.currentPlanta=id; render();
+  showToast('Subplanta "'+nombre+'" creada');
+}
+
+// ── DELETE ────────────────────────────────────────────────────
+function confirmDeleteMaquina(mid) {
+  document.getElementById('modal-title').textContent = 'Eliminar máquina';
+  document.getElementById('modal-body').innerHTML = '<p style="font-size:13px;line-height:1.6;">¿Eliminar <strong>'+esc(mid)+'</strong> y todos sus datos? Esta acción no se puede deshacer.</p>';
+  document.getElementById('modal-footer').innerHTML =
+    '<button class="btn" onclick="closeModal()">Cancelar</button>'+
+    '<button class="btn btn-danger" onclick="deleteMaquina(''+mid+'')">Sí, eliminar</button>';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function deleteMaquina(mid) {
+  const planta = state.subplantas.find(p=>p.id===state.currentPlanta);
+  planta.maquinas = planta.maquinas.filter(m=>m!==mid);
+  delete state.fichas[mid];
+  saveLocal(); closeModal(); render();
+  showToast('Máquina '+mid+' eliminada');
+}
+function confirmDeletePlanta(id) {
+  const planta = state.subplantas.find(p=>p.id===id);
+  document.getElementById('modal-title').textContent = 'Eliminar subplanta';
+  document.getElementById('modal-body').innerHTML = '<p style="font-size:13px;line-height:1.6;">¿Eliminar <strong>'+esc(planta.nombre)+'</strong> con sus '+planta.maquinas.length+' máquinas?</p>';
+  document.getElementById('modal-footer').innerHTML =
+    '<button class="btn" onclick="closeModal()">Cancelar</button>'+
+    '<button class="btn btn-danger" onclick="deletePlanta(''+id+'')">Sí, eliminar</button>';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function deletePlanta(id) {
+  const planta = state.subplantas.find(p=>p.id===id);
+  planta.maquinas.forEach(m=>delete state.fichas[m]);
+  state.subplantas = state.subplantas.filter(p=>p.id!==id);
+  state.currentPlanta=null;
+  saveLocal(); closeModal(); render();
+  showToast('Subplanta eliminada');
+}
+
+// ── MODAL ─────────────────────────────────────────────────────
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  state.editingMaquina=null; editMateriales=[]; editInspecciones=[];
+}
+document.getElementById('modal-overlay').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+
+loadLocal(); render();
+</script>
+</body>
+</html>
