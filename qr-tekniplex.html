@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>QR Tekniplex — Hoja de impresión</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'IBM Plex Sans',sans-serif;background:#f5f4f0;color:#1a1917;padding:24px;}
+  h1{font-size:15px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#1a3a2a;margin-bottom:4px;}
+  .subtitle{font-size:12px;color:#8a887e;margin-bottom:8px;}
+  .url-info{font-size:11px;font-family:'IBM Plex Mono',monospace;color:#2d6147;background:#e8f2ec;padding:6px 12px;border-radius:6px;display:inline-block;margin-bottom:20px;}
+  .controls{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;align-items:center;}
+  .btn{padding:8px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid #c2c0b6;background:#fff;color:#1a1917;font-family:inherit;transition:all .1s;}
+  .btn:hover{background:#eeede8;}
+  .btn-p{background:#1a3a2a;color:#fff;border-color:#1a3a2a;}
+  .btn-p:hover{background:#2d6147;}
+  .size-btn{padding:5px 12px;font-size:12px;}
+  .size-btn.active{background:#1a3a2a;color:#fff;border-color:#1a3a2a;}
+  select{padding:7px 10px;border-radius:6px;border:1px solid #c2c0b6;background:#fff;font-size:13px;font-family:inherit;color:#1a1917;}
+
+  /* planta section */
+  .planta-section{margin-bottom:32px;}
+  .planta-title{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#fff;background:#1a3a2a;padding:8px 14px;border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:space-between;}
+  .planta-count{font-size:11px;font-family:'IBM Plex Mono',monospace;opacity:.7;}
+  .qr-grid{display:grid;gap:12px;padding:14px;background:#fff;border:1px solid #d6d4cc;border-top:none;border-radius:0 0 8px 8px;}
+  .qr-grid.size-sm{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));}
+  .qr-grid.size-md{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
+  .qr-grid.size-lg{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));}
+
+  /* QR card */
+  .qr-card{background:#fff;border:1px solid #d6d4cc;border-radius:8px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;break-inside:avoid;}
+  .qr-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08);}
+  .qr-box{display:flex;align-items:center;justify-content:center;}
+  .qr-id{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:#1a3a2a;text-align:center;}
+  .qr-sub{font-size:10px;color:#8a887e;text-align:center;}
+  .qr-url{font-size:9px;color:#c2c0b6;text-align:center;word-break:break-all;display:none;}
+
+  /* print */
+  @media print{
+    body{background:#fff;padding:10px;}
+    .controls,.subtitle,.url-info,h1,.no-print{display:none!important;}
+    .qr-url{display:block!important;}
+    .planta-section{break-inside:avoid;}
+    .qr-card{border:1px solid #ccc;break-inside:avoid;}
+    .qr-grid{border:1px solid #ccc!important;}
+  }
+</style>
+</head>
+<body>
+
+<h1>Tekniplex — Códigos QR por Máquina</h1>
+<p class="subtitle">Categorización de Vidrios y Material Quebradizo</p>
+<div class="url-info" id="base-url-display">Cargando URL base...</div>
+
+<div class="controls no-print">
+  <button class="btn btn-p" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <span style="font-size:12px;color:#8a887e">Tamaño QR:</span>
+    <button class="btn size-btn" id="sz-sm" onclick="setSize('sm',60)">Pequeño</button>
+    <button class="btn size-btn active" id="sz-md" onclick="setSize('md',90)">Mediano</button>
+    <button class="btn size-btn" id="sz-lg" onclick="setSize('lg',130)">Grande</button>
+  </div>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <span style="font-size:12px;color:#8a887e">Subplanta:</span>
+    <select id="filter" onchange="filterPlanta(this.value)">
+      <option value="all">Todas</option>
+    </select>
+  </div>
+</div>
+
+<div id="content"></div>
+
+<script>
+// ── BASE URL ──────────────────────────────────────────────────
+// Detecta automáticamente la URL base del sitio
+const BASE_URL = 'https://samuel140104.github.io/Tekniplex-vidrios/';
+document.getElementById('base-url-display').textContent = BASE_URL + 'index.html#[MAQUINA]';
+
+// ── DATOS ─────────────────────────────────────────────────────
+const SUBPLANTAS = [
+  {id:'inyeccion',  nombre:'Inyección',         maquinas:['YN03','YN05','YN06','YN09','YN11','YN12','YN13','YN15','YN16','YN17','YN18']},
+  {id:'laminacion', nombre:'Laminación-Barrera', maquinas:['LA01','LA04','LA09','LA12','LA14','LA15','CO01']},
+  {id:'encartonado',nombre:'Encartonado',        maquinas:['WE07','WE08','WE09','WE10','WE12','WE13','WE14']},
+  {id:'mangas',     nombre:'Mangas',             maquinas:['MA01','MA05','MA06','MA09','MA12']},
+  {id:'omv',        nombre:'OMV',                maquinas:['OMV50','OMV87','OMV51','OMV77','OMV82','OMV78','OMV79','OMV84','OMV83','OMV52','OMV86','OMV88','OMV75','OMV40','OM80','OM85','OM70']},
+  {id:'industrial', nombre:'Industrial',         maquinas:['TI32','TI28','TI08','TI35','TI25','TI18','TI11','TI03','TI07','TI02','TI36','TE22','TE08','TE07','TE02','TE32','TE06','TE29']},
+  {id:'impresion',  nombre:'Impresión',          maquinas:['IM18','IM01','IM05','IM06','IM17','IM22']},
+  {id:'papel',      nombre:'Papel 1 y 3',        maquinas:['VI02','UF11','UF14','UF16','UF05','UF35','UF32','UF10','UF27','UF28','UF29','UF30','UF34','UF37','UF38','UF31','UF12','VR01','VR02','VR04','VR07']},
+  {id:'pelicula',   nombre:'Película',           maquinas:['HF05','HF03','HF04','HF07','HF10','HF06']},
+  {id:'etiqueta',   nombre:'Etiqueta',           maquinas:['ET04','ET05','ET06','ET07','ET09','ET02']},
+  {id:'foil',       nombre:'Foil',               maquinas:['FRL05','FRL06','FRL01','FRL04','FRL09','FRL10','FRL17','FRL13','FRL03','FRL02']},
+  {id:'maquilas',   nombre:'Maquilas',           maquinas:['ULMA','EM08']},
+];
+
+let currentSize = 90;
+
+// poblar filtro
+const sel = document.getElementById('filter');
+SUBPLANTAS.forEach(p=>{
+  const o = document.createElement('option');
+  o.value = p.id; o.textContent = p.nombre;
+  sel.appendChild(o);
+});
+
+function getUrl(mid){
+  return BASE_URL + 'index.html#' + mid;
+}
+
+function buildAll(sizeClass, qrSize, filterID){
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+
+  const lista = filterID==='all' ? SUBPLANTAS : SUBPLANTAS.filter(p=>p.id===filterID);
+
+  lista.forEach(planta=>{
+    const sec = document.createElement('div');
+    sec.className = 'planta-section';
+    sec.id = 'sec-'+planta.id;
+
+    sec.innerHTML =
+      '<div class="planta-title">'+
+      '<span>'+planta.nombre+'</span>'+
+      '<span class="planta-count">'+planta.maquinas.length+' máquinas</span>'+
+      '</div>'+
+      '<div class="qr-grid size-'+sizeClass+'" id="grid-'+planta.id+'"></div>';
+
+    content.appendChild(sec);
+
+    const grid = document.getElementById('grid-'+planta.id);
+    planta.maquinas.forEach(mid=>{
+      const url = getUrl(mid);
+      const card = document.createElement('div');
+      card.className = 'qr-card';
+      card.innerHTML =
+        '<div class="qr-box" id="qr-'+mid+'"></div>'+
+        '<div class="qr-id">'+mid+'</div>'+
+        '<div class="qr-sub">'+planta.nombre+'</div>'+
+        '<div class="qr-url">'+url+'</div>';
+      grid.appendChild(card);
+
+      // generar QR
+      new QRCode(document.getElementById('qr-'+mid),{
+        text: url,
+        width: qrSize,
+        height: qrSize,
+        colorDark: '#1a3a2a',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    });
+  });
+}
+
+function setSize(sz, px){
+  currentSize = px;
+  ['sm','md','lg'].forEach(s=>document.getElementById('sz-'+s).classList.remove('active'));
+  document.getElementById('sz-'+sz).classList.add('active');
+  buildAll(sz, px, document.getElementById('filter').value);
+}
+
+function filterPlanta(id){
+  buildAll(currentSize===60?'sm':currentSize===130?'lg':'md', currentSize, id);
+}
+
+// initial build
+buildAll('md', 90, 'all');
+</script>
+</body>
+</html>
