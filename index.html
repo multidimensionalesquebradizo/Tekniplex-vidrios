@@ -300,7 +300,7 @@ const ELEMS = [
 const AREAS_DEF = {
   talleres:    {nombre:'Talleres',    tipo:'taller',    espacios:[]},
   laboratorios:{nombre:'Laboratorios',tipo:'laboratorio',espacios:[]},
-  pasillos:    {nombre:'Pasillos',    tipo:'pasillos',  espacios:[]}
+  pasillos:    {nombre:'Pasillos',    tipo:'pasillos',  espacios:[]},
   oficinas:    {nombre:'Oficinas de planta',tipo:'oficina',espacios:[]},
   };
   
@@ -326,7 +326,7 @@ async function save(){
   try{
     await DB.ref('subplantas').set(S.sp);
     await DB.ref('fichas').set(S.fichas);
-    await DB.ref('areas').set(S.fichas);
+    await DB.ref('areas').set(S.areas);
     await DB.ref('fichasAreas').set(S.fichasAreas);
     // also cache locally
     localStorage.setItem('tkx_sp5',JSON.stringify(S.sp));
