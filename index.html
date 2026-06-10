@@ -459,10 +459,9 @@ function renderAreaContent(){
     const btn=S.edit
       ?'<button class="btn btn-sm" onclick="editEspacio(\''+eid+'\')">✏ Editar</button><button class="btn btn-sm btn-d" onclick="confDelEspacio(\''+eid+'\')">Eliminar</button>'
       :'<button class="btn btn-sm btn-p" onclick="verEspacioD(\''+eid+'\')">Ver ficha completa</button>';
-    const displayName=(eid.split('__')[1]||eid).replace(/_/g,' ');
     grid+='<div class="mcard">'+
-      '<div class="mcard-h"><span class="mid">'+esc(displayName)+'</span><span class="zpill '+wz+'">'+esc(ZLABEL[wz])+'</span></div>'+
-      '<div class="mcard-b">'+(f.nombre?'<div class="mname">'+esc(f.nombre)+'</div>':'')+
+      '<div class="mcard-h"><span class="mid">'+esc(eid)+'</span><span class="zpill '+wz+'">'+esc(ZLABEL[wz])+'</span></div>'+
+      '<div class="mcard-b"><div class="mname">'+esc(f.nombre||'Sin nombre registrado')+'</div>'+
       '<div class="chips">'+chips+'</div>'+
       '<div class="cmeta">'+mats.length+' material'+(mats.length!==1?'es':'')+' · Resp: '+esc(f.responsable||'—')+'</div></div>'+
       '<div class="cact">'+btn+'</div></div>';
@@ -1141,6 +1140,100 @@ function exportExcel(){
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
   });
 
+  // ── HOJA: RESUMEN ÁREAS DE PLANTA ────────────────────────
+  const areaResumen = [
+    ['TEKNIPLEX — RESUMEN DE ÁREAS DE PLANTA (Talleres, Laboratorios, Pasillos, Oficinas)'],
+    ['Fecha de exportación:', new Date().toLocaleDateString('es-CO')],
+    [],
+    ['Área','Tipo','Espacio / Ubicación','Responsable','Última Revisión','Próxima Inspección','Total Materiales','Zona 1','Zona 2','Zona 3','Zona 4','Sin zonificar','Inspecciones registradas']
+  ];
+  Object.entries(S.areas||{}).forEach(([aid, area])=>{
+    const espacios = area.espacios||[];
+    if(espacios.length===0){
+      areaResumen.push([area.nombre||aid, area.tipo||'', '(sin espacios registrados)','','','',0,0,0,0,0,0,0]);
+    } else {
+      espacios.forEach(eid=>{
+        const f = S.fichasAreas[eid]||{};
+        const mats = f.materiales||[];
+        const insps = f.inspecciones||[];
+        const nombre = (eid.split('__')[1]||eid).replace(/_/g,' ');
+        areaResumen.push([
+          area.nombre||aid,
+          area.tipo||'',
+          nombre,
+          f.responsable||'',
+          f.fecha||'',
+          f.proxima||'',
+          mats.length,
+          mats.filter(m=>m.zona==='z1').length,
+          mats.filter(m=>m.zona==='z2').length,
+          mats.filter(m=>m.zona==='z3').length,
+          mats.filter(m=>m.zona==='z4').length,
+          mats.filter(m=>!m.zona||m.zona==='none').length,
+          insps.length
+        ]);
+      });
+    }
+  });
+  const wsAreaRes = XLSX.utils.aoa_to_sheet(areaResumen);
+  wsAreaRes['!cols']=[{wch:20},{wch:14},{wch:24},{wch:18},{wch:14},{wch:16},{wch:14},{wch:8},{wch:8},{wch:8},{wch:8},{wch:12},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, wsAreaRes, 'Resumen Áreas');
+
+  // ── HOJA: MATERIALES DE ÁREAS ─────────────────────────────
+  const areaMatRows = [
+    ['TEKNIPLEX — MATERIALES QUEBRADIZOS EN ÁREAS DE PLANTA'],
+    ['Fecha:', new Date().toLocaleDateString('es-CO')],
+    [],
+    ['Área','Tipo de área','Espacio / Ubicación','Responsable','Última Revisión','Próxima Inspección','#','Elemento (Código)','Elemento (Descripción)','Descripción Material','Ubicación en Espacio','Cantidad','Zona','Observación / Plan de acción','Fecha Actualización']
+  ];
+  Object.entries(S.areas||{}).forEach(([aid, area])=>{
+    (area.espacios||[]).forEach(eid=>{
+      const f = S.fichasAreas[eid]||{};
+      const mats = f.materiales||[];
+      const nombre = (eid.split('__')[1]||eid).replace(/_/g,' ');
+      if(mats.length===0){
+        areaMatRows.push([area.nombre||aid, area.tipo||'', nombre, f.responsable||'', f.fecha||'', f.proxima||'', 0,'','','','','','','Sin materiales registrados', f.updated||'']);
+      } else {
+        mats.forEach((m,i)=>{
+          areaMatRows.push([
+            area.nombre||aid, area.tipo||'', nombre,
+            f.responsable||'', f.fecha||'', f.proxima||'',
+            i+1, m.elemento||'', elbl[m.elemento]||'', m.tipo||'', m.ubicacion||'',
+            m.cantidad||'', zlbl[m.zona]||'Sin zonificar', m.obs||'', f.updated||''
+          ]);
+        });
+      }
+    });
+  });
+  const wsAreaMat = XLSX.utils.aoa_to_sheet(areaMatRows);
+  wsAreaMat['!cols']=[{wch:18},{wch:14},{wch:24},{wch:16},{wch:14},{wch:16},{wch:5},{wch:12},{wch:28},{wch:24},{wch:22},{wch:10},{wch:22},{wch:30},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, wsAreaMat, 'Materiales Áreas');
+
+  // ── HOJA: INSPECCIONES DE ÁREAS ───────────────────────────
+  const areaInspRows = [
+    ['TEKNIPLEX — HISTORIAL DE INSPECCIONES EN ÁREAS DE PLANTA'],
+    ['Fecha:', new Date().toLocaleDateString('es-CO')],
+    [],
+    ['Área','Tipo de área','Espacio / Ubicación','Responsable','Fecha Inspección','Observación registrada']
+  ];
+  Object.entries(S.areas||{}).forEach(([aid, area])=>{
+    (area.espacios||[]).forEach(eid=>{
+      const f = S.fichasAreas[eid]||{};
+      const insps = f.inspecciones||[];
+      const nombre = (eid.split('__')[1]||eid).replace(/_/g,' ');
+      if(insps.length===0){
+        areaInspRows.push([area.nombre||aid, area.tipo||'', nombre, f.responsable||'','','Sin inspecciones registradas']);
+      } else {
+        [...insps].reverse().forEach(ins=>{
+          areaInspRows.push([area.nombre||aid, area.tipo||'', nombre, f.responsable||'', ins.fecha||'', ins.texto||'']);
+        });
+      }
+    });
+  });
+  const wsAreaInsp = XLSX.utils.aoa_to_sheet(areaInspRows);
+  wsAreaInsp['!cols']=[{wch:18},{wch:14},{wch:24},{wch:16},{wch:14},{wch:60}];
+  XLSX.utils.book_append_sheet(wb, wsAreaInsp, 'Inspecciones Áreas');
+
   // ── DESCARGAR ─────────────────────────────────────────────
   const fecha = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, 'Tekniplex_Vidrios_'+fecha+'.xlsx');
@@ -1331,3 +1424,4 @@ document.getElementById('dash-overlay').addEventListener('click',function(e){if(
 </script>
 </body>
 </html>
+
