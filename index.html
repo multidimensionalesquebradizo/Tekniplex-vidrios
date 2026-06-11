@@ -156,6 +156,21 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .pwscreen input{padding:10px 16px;border-radius:7px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:14px;font-family:var(--mono);letter-spacing:.15em;text-align:center;width:200px;outline:none;}
 .pwscreen input::placeholder{opacity:.4;letter-spacing:.05em;}
 .pwerr{color:#f5a0a0;font-size:12px;min-height:16px;}
+.foto-zona{margin-top:8px;}
+.foto-preview{width:100%;max-height:180px;object-fit:cover;border-radius:7px;border:1px solid var(--border);display:block;cursor:pointer;}
+.foto-thumb{width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer;flex-shrink:0;}
+.foto-input-lbl{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px dashed var(--border2);border-radius:6px;font-size:12px;color:var(--text3);cursor:pointer;transition:all .15s;}
+.foto-input-lbl:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light);}
+.foto-input-lbl input{display:none;}
+.foto-uploading{font-size:11px;color:var(--text3);font-family:var(--mono);padding:4px 0;}
+.foto-galeria{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.foto-item{position:relative;}
+.foto-del{position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:12px;line-height:18px;text-align:center;cursor:pointer;padding:0;}
+/* Modal de foto grande */
+.foto-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:600;align-items:center;justify-content:center;padding:20px;}
+.foto-modal.open{display:flex;}
+.foto-modal img{max-width:90vw;max-height:85vh;border-radius:10px;object-fit:contain;}
+.foto-modal-close{position:fixed;top:16px;right:20px;background:none;border:none;color:#fff;font-size:32px;cursor:pointer;line-height:1;}
 ::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
 @media(max-width:600px){.sidebar{width:145px;min-width:145px;}.mgrid{grid-template-columns:1fr;padding:12px;}.frow{grid-template-columns:1fr;}}
 /* ── BOTONES HEADER ── */
@@ -242,6 +257,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
     <div class="mftr" id="mftr"></div>
   </div>
 </div>
+<!-- Modal para ver foto grande -->
+<div class="foto-modal" id="foto-modal" onclick="closeFotoModal()">
+  <button class="foto-modal-close">×</button>
+  <img id="foto-modal-img" src="" alt="Foto material">
+</div>
 <div class="toast" id="toast"></div>
 
 <!-- ── DASHBOARD OVERLAY ── -->
@@ -259,8 +279,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script>
-const PW = 'tekniplex2026';
+const PW = 'inocuidadfy27';
 
 // ── FIREBASE ─────────────────────────────────────────────────
 const firebaseConfig = {
@@ -274,6 +295,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const DB = firebase.database();
+const ST = firebase.storage();
 
 const ZONAS = [
   {id:'z1',label:'Zona 1 — Crítico alto'},
@@ -335,6 +357,46 @@ async function save(){
     console.error('Firebase save error:',e);
     // fallback: save only locally
     try{localStorage.setItem('tkx_sp5',JSON.stringify(S.sp));localStorage.setItem('tkx_fc5',JSON.stringify(S.fichas));}catch(e2){}
+    // ── FOTOS ─────────────────────────────────────────────────────
+async function subirFoto(file, path){
+  const ref = ST.ref(path);
+  await ref.put(file);
+  return await ref.getDownloadURL();
+}
+
+function abrirFotoModal(url){
+  document.getElementById('foto-modal-img').src=url;
+  document.getElementById('foto-modal').classList.add('open');
+}
+function closeFotoModal(){
+  document.getElementById('foto-modal').classList.remove('open');
+  document.getElementById('foto-modal-img').src='';
+}
+
+async function handleFotoMat(idx){
+  const input=document.getElementById('foto-file-'+idx);
+  if(!input||!input.files[0]) return;
+  const file=input.files[0];
+  const lbl=document.getElementById('foto-lbl-'+idx);
+  lbl.textContent='Subiendo…';
+  try{
+    const mid=S.editing||'general';
+    const path='fotos/'+mid+'/mat_'+idx+'_'+Date.now();
+    const url=await subirFoto(file,path);
+    if(!eMats[idx].fotos) eMats[idx].fotos=[];
+    eMats[idx].fotos.push(url);
+    renderMList();
+    toast('✅ Foto guardada');
+  }catch(e){
+    lbl.textContent='📷 Agregar foto';
+    toast('❌ Error al subir foto');
+  }
+}
+
+function delFotoMat(matIdx, fotoIdx){
+  eMats[matIdx].fotos.splice(fotoIdx,1);
+  renderMList();
+}
     toast('⚠ Sin conexión — guardado solo localmente');
   }
 }
@@ -670,6 +732,20 @@ function renderMList(){
        '</div>'+
        '<div class="fg"><label class="fl">Zonificación</label>'+zradio+'</div>'+
        '<div class="fg" style="margin-bottom:0"><label class="fl">Observación / plan de acción</label><input class="fi" id="mo'+i+'" value="'+esc(m.obs||'')+'" placeholder="ej: Requiere reemplazo..."></div>'+
+const fotos = m.fotos||[];
+const fotosHtml = fotos.map((url,fi)=>
+  '<div class="foto-item">'+
+  '<img class="foto-thumb" src="'+url+'" onclick="abrirFotoModal(\''+url+'\')">'+
+  (S.edit?'<button class="foto-del" onclick="delFotoMat('+i+','+fi+')">×</button>':'')+
+  '</div>'
+).join('');
+
+// Y el botón para agregar foto:
+const addFotoHtml = '<div class="foto-zona">'+
+  '<div class="foto-galeria">'+fotosHtml+'</div>'+
+  '<label class="foto-input-lbl" id="foto-lbl-'+i+'">📷 Agregar foto'+
+  '<input type="file" id="foto-file-'+i+'" accept="image/*" onchange="handleFotoMat('+i+')"></label>'+
+  '</div>';
        '</div>';
   });
   c.innerHTML=h;
