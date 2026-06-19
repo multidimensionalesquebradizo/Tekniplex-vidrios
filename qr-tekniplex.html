@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Tekniplex — Control de Material Quebradizo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;600;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: #f5f4f0;
+    color: #1a1917;
+    padding: 24px;
+  }
+
+  #loading {
+    position: fixed; inset: 0;
+    background: #1a3a2a;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 14px; z-index: 999;
+    color: white;
+  }
+  #loading p { font-size: 14px; opacity: 0.7; }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(255,255,255,0.2);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .controls {
+    background: #1a3a2a;
+    color: white;
+    padding: 14px 20px;
+    border-radius: 10px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .controls h1 { font-size: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+  .controls span { font-size: 12px; opacity: 0.65; font-family: 'IBM Plex Mono', monospace; }
+  .ctl-right { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .btn-print, .btn-refresh {
+    border: none; padding: 8px 16px; border-radius: 7px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .btn-print { background: #c8a227; color: #1a1000; }
+  .btn-print:hover { background: #e0b530; }
+  .btn-refresh { background: rgba(255,255,255,.15); color: #fff; }
+  .btn-refresh:hover { background: rgba(255,255,255,.25); }
+  .filtro-select {
+    padding: 7px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.3);
+    background: rgba(255,255,255,.1); color: #fff; font-size: 12px;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .filtro-select option { color: #1a1917; }
+
+  .marca { text-align: center; margin-bottom: 22px; }
+  .marca-tag {
+    display: inline-block;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+    color: #1a3a2a; border: 1.5px solid #1a3a2a;
+    padding: 6px 16px; border-radius: 20px;
+  }
+
+  .grupo-titulo {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
+    color: #c2c0b6; margin: 28px 0 4px; padding-left: 2px;
+  }
+  .seccion { margin-bottom: 30px; page-break-inside: avoid; }
+  .seccion-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #1a3a2a;
+  }
+  .seccion-nombre { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #1a3a2a; }
+  .seccion-count { font-size: 10px; font-family: 'IBM Plex Mono', monospace; color: #8a887e; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .maquina-bloque { margin-bottom: 18px; }
+  .maquina-titulo {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: #5a5852;
+    margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px dashed #d6d4cc;
+  }
+
+  .qr-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+  .qr-card {
+    background: white; border: 1px solid #d6d4cc; border-radius: 10px;
+    padding: 14px 10px 10px; display: flex; flex-direction: column;
+    align-items: center; gap: 8px; page-break-inside: avoid; break-inside: avoid;
+  }
+  .qr-card.generico { border-style: dashed; background: #fafaf8; }
+  .qr-img { width: 110px; height: 110px; display: flex; align-items: center; justify-content: center; }
+  .qr-img canvas, .qr-img img { width: 110px !important; height: 110px !important; }
+  .qr-mid { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 700; color: #1a3a2a; letter-spacing: 0.03em; text-align: center; }
+  .qr-sub { font-size: 10.5px; font-weight: 600; color: #2d6147; text-align: center; background: #e8f2ec; padding: 2px 9px; border-radius: 10px; }
+  .qr-sub.generico-tag { color: #8a887e; background: #eeede8; }
+  .qr-planta { font-size: 10px; color: #8a887e; text-align: center; }
+
+  .empty-msg { text-align: center; padding: 60px 20px; color: #8a887e; font-size: 13px; }
+
+  @media print {
+    body { background: white; padding: 8mm; }
+    .controls { display: none !important; }
+    #loading { display: none !important; }
+    .marca-tag { border-color: #333; color: #333; }
+    .seccion { page-break-inside: avoid; margin-bottom: 18px; }
+    .seccion-header { border-bottom-color: #333; }
+    .seccion-nombre { color: #333; }
+    .grupo-titulo { color: #999; }
+    .qr-grid { grid-template-columns: repeat(4, 1fr); gap: 7px; }
+    .qr-card { border: 1px solid #ccc; border-radius: 7px; padding: 10px 7px 7px; }
+    .qr-img { width: 95px; height: 95px; }
+    .qr-img canvas, .qr-img img { width: 95px !important; height: 95px !important; }
+    .qr-mid { font-size: 12px; }
+    .qr-sub { font-size: 9px; }
+    .qr-planta { font-size: 9px; }
+    @page { margin: 10mm; size: A4 portrait; }
+  }
+
+  @media (max-width: 700px) {
+    .qr-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Conectando con Firebase y generando códigos QR…</p>
+</div>
+
+<div class="controls">
+  <div>
+    <h1>QR Tekniplex — Control de Material Quebradizo</h1>
+    <span id="resumen">Cargando…</span>
+  </div>
+  <div class="ctl-right">
+    <select class="filtro-select" id="filtro" onchange="aplicarFiltro()">
+      <option value="todo">Todo: subplantas + áreas</option>
+      <option value="sp">Solo subplantas</option>
+      <option value="area">Solo áreas de planta</option>
+    </select>
+    <button class="btn-refresh" onclick="location.reload()">↻ Recargar datos</button>
+    <button class="btn-print" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+  </div>
+</div>
+
+<div class="marca">
+  <span class="marca-tag">Tekniplex — Control de Material Quebradizo</span>
+</div>
+
+<div id="contenido"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// CONFIG — misma base de datos que tu index.html
+// ════════════════════════════════════════════════════════════
+const BASE_URL = window.location.origin + window.location.pathname.replace('qr-tekniplex.html', '');
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDa020kTp0XCbdGSYzEfszGOLICxILy04k",
+  authDomain: "tekniplex-vidrios.firebaseapp.com",
+  databaseURL: "https://tekniplex-vidrios-default-rtdb.firebaseio.com",
+  projectId: "tekniplex-vidrios",
+  storageBucket: "tekniplex-vidrios.firebasestorage.app",
+  messagingSenderId: "625667446644",
+  appId: "1:625667446644:web:0ae0fc14f4dbc1b424fe21"
+};
+firebase.initializeApp(firebaseConfig);
+const DB = firebase.database();
+
+let DATA = { sp: [], fichas: {}, areas: {}, fichasAreas: {} };
+
+// ════════════════════════════════════════════════════════════
+// CARGA DESDE FIREBASE
+// ════════════════════════════════════════════════════════════
+async function cargarDatos() {
+  const [spSnap, fcSnap, arSnap, faSnap] = await Promise.all([
+    DB.ref('subplantas').get(),
+    DB.ref('fichas').get(),
+    DB.ref('areas').get(),
+    DB.ref('fichasAreas').get(),
+  ]);
+  DATA.sp          = spSnap.exists() ? spSnap.val() : [];
+  DATA.fichas      = fcSnap.exists() ? fcSnap.val() : {};
+  DATA.areas       = arSnap.exists() ? arSnap.val() : {};
+  DATA.fichasAreas = faSnap.exists() ? faSnap.val() : {};
+}
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ════════════════════════════════════════════════════════════
+// CONSTRUIR LISTA UNIFICADA: subplantas (máquinas) + áreas (espacios)
+// ════════════════════════════════════════════════════════════
+function construirGrupos() {
+  const grupos = [];
+
+  (DATA.sp || []).forEach(p => {
+    const items = (p.maquinas || []).map(mid => {
+      const f = DATA.fichas[mid] || {};
+      return { codigo: mid, materiales: f.materiales || [] };
+    });
+    grupos.push({ tipo:'sp', nombre: p.nombre, items });
+  });
+
+  Object.entries(DATA.areas || {}).forEach(([aid, area]) => {
+    const items = (area.espacios || []).map(eid => {
+      const f = DATA.fichasAreas[eid] || {};
+      const nombreLegible = f.nombreEspacio || (eid.includes('__') ? eid.split('__')[1].replace(/_/g,' ') : eid.replace(/_/g,' '));
+      return { codigo: eid, nombreVisible: nombreLegible, materiales: f.materiales || [] };
+    });
+    grupos.push({ tipo:'area', nombre: area.nombre, items });
+  });
+
+  return grupos;
+}
+
+// ════════════════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════════════════
+let GRUPOS = [];
+let FILTRO = 'todo';
+
+function aplicarFiltro(){
+  FILTRO = document.getElementById('filtro').value;
+  renderTodo();
+}
+
+function renderTodo(){
+  const contenido = document.getElementById('contenido');
+  contenido.innerHTML = '';
+
+  const gruposFiltrados = GRUPOS.filter(g => FILTRO==='todo' || g.tipo===FILTRO);
+
+  let totalQR = 0, totalItems = 0;
+
+  if (gruposFiltrados.length === 0) {
+    contenido.innerHTML = '<div class="empty-msg">No hay datos para mostrar con este filtro.</div>';
+    document.getElementById('resumen').textContent = '0 códigos generados';
+    return;
+  }
+
+  const subplantasG = gruposFiltrados.filter(g=>g.tipo==='sp');
+  const areasG = gruposFiltrados.filter(g=>g.tipo==='area');
+
+  function pintarBloque(titulo, lista){
+    if(!lista.length) return;
+    const tWrap = document.createElement('div');
+    tWrap.className = 'grupo-titulo';
+    tWrap.textContent = titulo;
+    contenido.appendChild(tWrap);
+
+    lista.forEach(grupo => {
+      const seccion = document.createElement('div');
+      seccion.className = 'seccion';
+
+      const itemsConAlgo = grupo.items.length;
+      seccion.innerHTML = `
+        <div class="seccion-header">
+          <span class="seccion-nombre">${esc(grupo.nombre)}</span>
+          <span class="seccion-count">${itemsConAlgo} ${grupo.tipo==='sp'?'máquina':'espacio'}${itemsConAlgo!==1?'s':''}</span>
+        </div>
+      `;
+
+      grupo.items.forEach(item => {
+        totalItems++;
+        const bloque = document.createElement('div');
+        bloque.className = 'maquina-bloque';
+
+        const tituloMaq = document.createElement('div');
+        tituloMaq.className = 'maquina-titulo';
+        tituloMaq.textContent = item.codigo + (item.nombreVisible ? '  —  ' + item.nombreVisible : '');
+        bloque.appendChild(tituloMaq);
+
+        const grid = document.createElement('div');
+        grid.className = 'qr-grid';
+
+        if (item.materiales.length === 0) {
+          const qid = 'qr_' + item.codigo.replace(/[^a-zA-Z0-9]/g,'_');
+          const card = document.createElement('div');
+          card.className = 'qr-card generico';
+          card.innerHTML = `
+            <div class="qr-img" id="${qid}"></div>
+            <div class="qr-mid">${esc(item.codigo)}</div>
+            <span class="qr-sub generico-tag">Ficha general</span>
+          `;
+          grid.appendChild(card);
+          totalQR++;
+          requestAnimationFrame(()=> generarQR(qid, BASE_URL + '#' + item.codigo));
+        } else {
+          item.materiales.forEach((mat, idx) => {
+            const qid = 'qr_' + item.codigo.replace(/[^a-zA-Z0-9]/g,'_') + '_m' + idx;
+            const url = BASE_URL + '#' + item.codigo + '|mat' + idx;
+            const card = document.createElement('div');
+            card.className = 'qr-card';
+            card.innerHTML = `
+              <div class="qr-img" id="${qid}"></div>
+              <div class="qr-mid">${esc(item.codigo)}</div>
+              <span class="qr-sub">Material #${idx+1}</span>
+            `;
+            grid.appendChild(card);
+            totalQR++;
+            requestAnimationFrame(()=> generarQR(qid, url));
+          });
+        }
+
+        bloque.appendChild(grid);
+        seccion.appendChild(bloque);
+      });
+
+      contenido.appendChild(seccion);
+    });
+  }
+
+  pintarBloque('Subplantas de planta', subplantasG);
+  pintarBloque('Áreas de planta', areasG);
+
+  document.getElementById('resumen').textContent =
+    `${totalItems} máquinas/espacios · ${totalQR} códigos QR generados`;
+
+  document.getElementById('loading').style.display = 'none';
+}
+
+function generarQR(elId, url){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  el.innerHTML = '';
+  new QRCode(el, {
+    text: url,
+    width: 110,
+    height: 110,
+    colorDark: '#1a3a2a',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+window.addEventListener('load', async () => {
+  try {
+    await cargarDatos();
+    GRUPOS = construirGrupos();
+    renderTodo();
+  } catch(e) {
+    document.getElementById('loading').innerHTML =
+      '<p style="color:#f5a0a0">Error al conectar con Firebase.<br>'+esc(e.message)+'</p>';
+  }
+});
+</script>
+</body>
+</html>
