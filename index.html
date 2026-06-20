@@ -139,6 +139,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .mtable td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text2);}
 .mtable tr:last-child td{border-bottom:none;}
 .mtable td:first-child{color:var(--text);font-weight:500;}
+.mat-row-highlight{animation:matPulse 2s ease-in-out 2;background:var(--accent-light)!important;}
+@keyframes matPulse{0%,100%{background:var(--accent-light);}50%{background:#c8a227;}}
 .ihist{display:flex;flex-direction:column;gap:0;}
 .ihrow{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);}
 .ihrow:last-child{border-bottom:none;}
@@ -314,10 +316,9 @@ const ELEMS = [
   {id:'LE',desc:'Lámpara de emergencia'},
   {id:'LB',desc:'Lámpara bombillo con protección'},
   {id:'MA',desc:'Máquina con acrílico'},
-  {id:'PT',desc:'Panel / Tablero / Plano'},
+  {id:'PT',desc:'Plano de evacuación / Tablero'},
   {id:'AC',desc:'Acrílicos en zonas comunes'},
   {id:'VI',desc:'Vidrios de puertas y ventanas'},
-  {id:'IM',desc:'Instrumentos de medición'},
 ];
 
 const AREAS_DEF = {
@@ -590,7 +591,7 @@ function renderDetail(){
   let trows='';
   if(mats.length){
     mats.forEach((m,i)=>{
-      trows+='<tr><td style="color:var(--text3);font-family:var(--mono)">'+(i+1)+'</td>'+
+      trows+="<tr id=\"mat-row-"+i+"\"><td style=\"color:var(--text3);font-family:var(--mono)\">"+(i+1)+"</td>"+
         '<td>'+esc(m.elemento||'—')+'</td><td>'+esc(m.tipo||'—')+'</td>'+
         '<td>'+esc(m.ubicacion||'—')+'</td><td>'+esc(m.cantidad||'—')+'</td>'+
         '<td><span class="zpill '+(m.zona||'znone')+'">'+esc(ZLABEL[m.zona]||'Sin zonificar')+'</span></td>'+
@@ -609,7 +610,7 @@ function renderDetail(){
     });
   }
   const matSection=mats.length
-    ?'<table class="mtable"><thead><tr><th>#</th><th>Elemento</th><th>Descripción</th><th>Ubicación</th><th>Cantidad</th><th>Zona</th><th>Observación</th></tr></thead><tbody>'+trows+'</tbody></table>'
+    ?'<table class="mtable" id="mat-table"><thead><tr><th>#</th><th>Elemento</th><th>Descripción</th><th>Ubicación</th><th>Cantidad</th><th>Zona</th><th>Observación</th></tr></thead><tbody>'+trows+'</tbody></table>'
     :'<p style="font-size:13px;color:var(--text3)">No hay materiales registrados.</p>';
 
   let irows='';
@@ -922,7 +923,7 @@ function renderEspacioDetail(){
   let trows='';
   if(mats.length){
     mats.forEach((m,i)=>{
-      trows+='<tr><td style="color:var(--text3);font-family:var(--mono)">'+(i+1)+'</td>'+
+      trows+="<tr id=\"mat-row-"+i+"\"><td style=\"color:var(--text3);font-family:var(--mono)\">"+(i+1)+"</td>"+
         '<td>'+esc(m.elemento||'—')+'</td><td>'+esc(m.tipo||'—')+'</td>'+
         '<td>'+esc(m.ubicacion||'—')+'</td><td>'+esc(m.cantidad||'—')+'</td>'+
         '<td><span class="zpill '+(m.zona||'znone')+'">'+esc(ZLABEL[m.zona]||'Sin zonificar')+'</span></td>'+
@@ -939,6 +940,21 @@ function renderEspacioDetail(){
       }
     });
   }
+  const matSection=mats.length
+    ?'<table class="mtable" id="mat-table"><thead><tr><th>#</th><th>Elemento</th><th>Descripción</th><th>Ubicación</th><th>Cantidad</th><th>Zona</th><th>Observación</th></tr></thead><tbody>'+trows+'</tbody></table>'
+    :'<p style="font-size:13px;color:var(--text3)">No hay materiales registrados.</p>';
+
+  let irows='';
+  if(insps.length){
+    insps.slice().reverse().forEach(i=>{
+      irows+='<div class="ihrow"><span class="ihdate">'+esc(i.fecha)+'</span><span class="ihtxt">'+esc(i.texto)+'</span></div>';
+    });
+  }
+  const inspSection=insps.length?'<div class="ihist">'+irows+'</div>':'<p style="font-size:13px;color:var(--text3)">No hay inspecciones registradas.</p>';
+
+  document.getElementById('mc').innerHTML=
+    '<div class="dgrid"><div class="dcard">'+
+    '<div class="dchdr"><div><div class="did">'+esc(nombre.replace(/_/g,' '))+'</div><div class="dname">'+esc(area?area.nombre:'')+'</div></div>'+
     '<span class="zpill '+wz+'" style="font-size:12px;padding:5px 12px">'+esc(ZLABEL[wz])+'</span></div>'+
     '<div class="dsec"><div class="dsect">Información general</div>'+
     '<div class="drow"><span class="dkey">Responsable</span><span class="dval">'+esc(f.responsable||'—')+'</span></div>'+
@@ -1060,15 +1076,59 @@ document.getElementById('mov').addEventListener('click',function(e){if(e.target=
 
 // ── HASH ROUTING — QR support ─────────────────────────────────
 function routeFromHash(){
-  const hash = window.location.hash.replace('#','').trim().toUpperCase();
+  let hash = window.location.hash.replace('#','').trim();
   if(!hash) { render(); return; }
-  const planta = S.sp.find(p => p.maquinas.map(m=>m.toUpperCase()).includes(hash));
+
+  // separar código|matN si existe
+  let matIdx = null;
+  if(hash.includes('|')){
+    const parts = hash.split('|');
+    hash = parts[0];
+    const mm = parts[1].match(/^mat(\d+)$/i);
+    if(mm) matIdx = parseInt(mm[1],10);
+  }
+  const hashU = hash.toUpperCase();
+
+  // 1) Buscar en subplantas (máquinas)
+  const planta = S.sp.find(p => p.maquinas.map(m=>m.toUpperCase()).includes(hashU));
   if(planta){
-    const realMid = planta.maquinas.find(m=>m.toUpperCase()===hash);
+    const realMid = planta.maquinas.find(m=>m.toUpperCase()===hashU);
     S.planta  = planta.id;
     S.maquina = realMid;
+    S.modo    = 'sp';
+    S.area    = null;
+    S.espacio = null;
+    render();
+    if(matIdx!==null) setTimeout(()=>resaltarMaterial(matIdx), 250);
+    return;
   }
+
+  // 2) Buscar en áreas (espacios) — comparar por código exacto (eid)
+  for(const [aid, area] of Object.entries(S.areas||{})){
+    const espacios = area.espacios||[];
+    const real = espacios.find(e=>e.toUpperCase()===hashU);
+    if(real){
+      S.area    = aid;
+      S.espacio = real;
+      S.modo    = 'area';
+      S.planta  = null;
+      S.maquina = null;
+      render();
+      if(matIdx!==null) setTimeout(()=>resaltarMaterial(matIdx), 250);
+      return;
+    }
+  }
+
+  // No encontrado en ningún lado
   render();
+}
+
+function resaltarMaterial(idx){
+  const row = document.getElementById('mat-row-'+idx);
+  if(!row) return;
+  row.scrollIntoView({behavior:'smooth', block:'center'});
+  row.classList.add('mat-row-highlight');
+  setTimeout(()=>row.classList.remove('mat-row-highlight'), 4500);
 }
 
 load().then(()=>{
