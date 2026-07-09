@@ -139,8 +139,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .mtable td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text2);}
 .mtable tr:last-child td{border-bottom:none;}
 .mtable td:first-child{color:var(--text);font-weight:500;}
-.mat-row-highlight{animation:matPulse 2s ease-in-out 2;background:var(--accent-light)!important;}
-@keyframes matPulse{0%,100%{background:var(--accent-light);}50%{background:#c8a227;}}
 .ihist{display:flex;flex-direction:column;gap:0;}
 .ihrow{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);}
 .ihrow:last-child{border-bottom:none;}
@@ -319,7 +317,6 @@ const ELEMS = [
   {id:'PT',desc:'Plano de evacuación / Tablero'},
   {id:'AC',desc:'Acrílicos en zonas comunes'},
   {id:'VI',desc:'Vidrios de puertas y ventanas'},
-  {id:'EM',desc:'Equipos de medición'},
 ];
 
 const AREAS_DEF = {
@@ -337,7 +334,7 @@ const SP_DEF = [
   {id:'omv',        nombre:'OMV',                maquinas:['OMV50','OMV87','OMV51','OMV77','OMV82','OMV78','OMV79','OMV84','OMV83','OMV52','OMV86','OMV88','OMV75','OMV40','OM80','OM85','OM70']},
   {id:'industrial', nombre:'Industrial',         maquinas:['TI32','TI28','TI08','TI35','TI25','TI18','TI11','TI03','TI07','TI02','TI36','TE22','TE08','TE07','TE02','TE32','TE06','TE29']},
   {id:'impresion',  nombre:'Impresión',          maquinas:['IM18','IM01','IM05','IM06','IM17','IM22']},
-  {id:'papel',      nombre:'Papel 1 y 3',        maquinas:['UI02','UF11','UF14','UF15','UF05','UF35','UF32','UF33','UF29','UF30','UF34','UF31','UF12','UR01','UR02','UR04','UR07','UF09','UR05']},
+  {id:'papel',      nombre:'Papel 1 y 3',        maquinas:['VI02','UF11','UF14','UF16','UF05','UF35','UF32','UF10','UF27','UF28','UF29','UF30','UF34','UF37','UF38','UF31','UF12','VR01','VR02','VR04','VR07']},
   {id:'pelicula',   nombre:'Película',           maquinas:['HF05','HF03','HF04','HF07','HF10','HF06']},
   {id:'etiqueta',   nombre:'Etiqueta',           maquinas:['ET04','ET05','ET06','ET07','ET09','ET02']},
   {id:'foil',       nombre:'Foil',               maquinas:['FRL05','FRL06','FRL01','FRL04','FRL09','FRL10','FRL17','FRL13','FRL03','FRL02']},
@@ -399,10 +396,37 @@ async function handleFotoMat(idx){
   }
 }
 
-function delFotoMat(matIdx, fotoIdx){
+// Borra todas las fotos de Storage de un material (cuando se elimina el material completo)
+async function borrarFotosMaterial(mat){
+  const fotos = mat.fotos||[];
+  for(const url of fotos){
+    if(url && url.includes('firebasestorage')){
+      try{
+        const ref = ST.refFromURL(url);
+        await ref.delete();
+      }catch(e){
+        console.warn('No se pudo borrar foto de Storage:', e.message);
+      }
+    }
+  }
+}
+
+async function delFotoMat(matIdx, fotoIdx){
   if(!eMats[matIdx].fotos) return;
+  const url = eMats[matIdx].fotos[fotoIdx];
+  // Borrar el archivo físico de Firebase Storage
+  if(url && url.includes('firebasestorage')){
+    try{
+      const ref = ST.refFromURL(url);
+      await ref.delete();
+    }catch(e){
+      // Si ya no existe en Storage, ignorar el error y continuar
+      console.warn('No se pudo borrar de Storage (puede que ya no exista):', e.message);
+    }
+  }
   eMats[matIdx].fotos.splice(fotoIdx,1);
   renderMList();
+  toast('🗑 Foto eliminada del almacenamiento');
 }
 
 async function load(){
@@ -592,7 +616,7 @@ function renderDetail(){
   let trows='';
   if(mats.length){
     mats.forEach((m,i)=>{
-      trows+="<tr id=\"mat-row-"+i+"\"><td style=\"color:var(--text3);font-family:var(--mono)\">"+(i+1)+"</td>"+
+      trows+='<tr><td style="color:var(--text3);font-family:var(--mono)">'+(i+1)+'</td>'+
         '<td>'+esc(m.elemento||'—')+'</td><td>'+esc(m.tipo||'—')+'</td>'+
         '<td>'+esc(m.ubicacion||'—')+'</td><td>'+esc(m.cantidad||'—')+'</td>'+
         '<td><span class="zpill '+(m.zona||'znone')+'">'+esc(ZLABEL[m.zona]||'Sin zonificar')+'</span></td>'+
@@ -611,7 +635,7 @@ function renderDetail(){
     });
   }
   const matSection=mats.length
-    ?'<table class="mtable" id="mat-table"><thead><tr><th>#</th><th>Elemento</th><th>Descripción</th><th>Ubicación</th><th>Cantidad</th><th>Zona</th><th>Observación</th></tr></thead><tbody>'+trows+'</tbody></table>'
+    ?'<table class="mtable"><thead><tr><th>#</th><th>Elemento</th><th>Descripción</th><th>Ubicación</th><th>Cantidad</th><th>Zona</th><th>Observación</th></tr></thead><tbody>'+trows+'</tbody></table>'
     :'<p style="font-size:13px;color:var(--text3)">No hay materiales registrados.</p>';
 
   let irows='';
@@ -796,7 +820,15 @@ function addMat(){
     if(items.length) items[items.length-1].scrollIntoView({behavior:'smooth',block:'center'});
   },60);
 }
-function delMat(i){eMats.splice(i,1);renderMList();}
+async function delMat(i){
+  // Borrar fotos del material de Firebase Storage antes de eliminarlo
+  if(eMats[i] && (eMats[i].fotos||[]).length>0){
+    await borrarFotosMaterial(eMats[i]);
+  }
+  eMats.splice(i,1);
+  renderMList();
+  toast('Material eliminado');
+}
 
 function saveFicha(){
   // capture text inputs
@@ -924,7 +956,7 @@ function renderEspacioDetail(){
   let trows='';
   if(mats.length){
     mats.forEach((m,i)=>{
-      trows+="<tr id=\"mat-row-"+i+"\"><td style=\"color:var(--text3);font-family:var(--mono)\">"+(i+1)+"</td>"+
+      trows+='<tr><td style="color:var(--text3);font-family:var(--mono)">'+(i+1)+'</td>'+
         '<td>'+esc(m.elemento||'—')+'</td><td>'+esc(m.tipo||'—')+'</td>'+
         '<td>'+esc(m.ubicacion||'—')+'</td><td>'+esc(m.cantidad||'—')+'</td>'+
         '<td><span class="zpill '+(m.zona||'znone')+'">'+esc(ZLABEL[m.zona]||'Sin zonificar')+'</span></td>'+
@@ -941,21 +973,6 @@ function renderEspacioDetail(){
       }
     });
   }
-  const matSection=mats.length
-    ?'<table class="mtable" id="mat-table"><thead><tr><th>#</th><th>Elemento</th><th>Descripción</th><th>Ubicación</th><th>Cantidad</th><th>Zona</th><th>Observación</th></tr></thead><tbody>'+trows+'</tbody></table>'
-    :'<p style="font-size:13px;color:var(--text3)">No hay materiales registrados.</p>';
-
-  let irows='';
-  if(insps.length){
-    insps.slice().reverse().forEach(i=>{
-      irows+='<div class="ihrow"><span class="ihdate">'+esc(i.fecha)+'</span><span class="ihtxt">'+esc(i.texto)+'</span></div>';
-    });
-  }
-  const inspSection=insps.length?'<div class="ihist">'+irows+'</div>':'<p style="font-size:13px;color:var(--text3)">No hay inspecciones registradas.</p>';
-
-  document.getElementById('mc').innerHTML=
-    '<div class="dgrid"><div class="dcard">'+
-    '<div class="dchdr"><div><div class="did">'+esc(nombre.replace(/_/g,' '))+'</div><div class="dname">'+esc(area?area.nombre:'')+'</div></div>'+
     '<span class="zpill '+wz+'" style="font-size:12px;padding:5px 12px">'+esc(ZLABEL[wz])+'</span></div>'+
     '<div class="dsec"><div class="dsect">Información general</div>'+
     '<div class="drow"><span class="dkey">Responsable</span><span class="dval">'+esc(f.responsable||'—')+'</span></div>'+
@@ -1077,59 +1094,15 @@ document.getElementById('mov').addEventListener('click',function(e){if(e.target=
 
 // ── HASH ROUTING — QR support ─────────────────────────────────
 function routeFromHash(){
-  let hash = window.location.hash.replace('#','').trim();
+  const hash = window.location.hash.replace('#','').trim().toUpperCase();
   if(!hash) { render(); return; }
-
-  // separar código|matN si existe
-  let matIdx = null;
-  if(hash.includes('|')){
-    const parts = hash.split('|');
-    hash = parts[0];
-    const mm = parts[1].match(/^mat(\d+)$/i);
-    if(mm) matIdx = parseInt(mm[1],10);
-  }
-  const hashU = hash.toUpperCase();
-
-  // 1) Buscar en subplantas (máquinas)
-  const planta = S.sp.find(p => p.maquinas.map(m=>m.toUpperCase()).includes(hashU));
+  const planta = S.sp.find(p => p.maquinas.map(m=>m.toUpperCase()).includes(hash));
   if(planta){
-    const realMid = planta.maquinas.find(m=>m.toUpperCase()===hashU);
+    const realMid = planta.maquinas.find(m=>m.toUpperCase()===hash);
     S.planta  = planta.id;
     S.maquina = realMid;
-    S.modo    = 'sp';
-    S.area    = null;
-    S.espacio = null;
-    render();
-    if(matIdx!==null) setTimeout(()=>resaltarMaterial(matIdx), 250);
-    return;
   }
-
-  // 2) Buscar en áreas (espacios) — comparar por código exacto (eid)
-  for(const [aid, area] of Object.entries(S.areas||{})){
-    const espacios = area.espacios||[];
-    const real = espacios.find(e=>e.toUpperCase()===hashU);
-    if(real){
-      S.area    = aid;
-      S.espacio = real;
-      S.modo    = 'area';
-      S.planta  = null;
-      S.maquina = null;
-      render();
-      if(matIdx!==null) setTimeout(()=>resaltarMaterial(matIdx), 250);
-      return;
-    }
-  }
-
-  // No encontrado en ningún lado
   render();
-}
-
-function resaltarMaterial(idx){
-  const row = document.getElementById('mat-row-'+idx);
-  if(!row) return;
-  row.scrollIntoView({behavior:'smooth', block:'center'});
-  row.classList.add('mat-row-highlight');
-  setTimeout(()=>row.classList.remove('mat-row-highlight'), 4500);
 }
 
 load().then(()=>{
@@ -1191,31 +1164,110 @@ function exportExcel(){
 
   // ── HOJA 2: TODOS LOS MATERIALES ─────────────────────────
   const matRows = [
-    ['TECNIPLEX — DETALLE DE TODOS LOS MATERIALES QUEBRADIZOS'],
+    ['TEKNIPLEX — DETALLE DE TODOS LOS MATERIALES QUEBRADIZOS'],
     ['Fecha:', new Date().toLocaleDateString('es-CO')],
     [],
-    ['Subplanta','Código Máquina','Nombre Máquina','Responsable','Última Revisión','Próxima Inspección','#','Elemento (Código)','Elemento (Descripción)','Descripción Material','Ubicación en Máquina','Cantidad','Zona','Observación / Plan de acción','Fecha Actualización']
+    ['Subplanta','Código Máquina','Nombre Máquina','Responsable','Última Revisión','Próxima Inspección','#','Elemento (Código)','Elemento (Descripción)','Descripción Material','Ubicación en Máquina','Cantidad','Zona','Observación / Plan de acción','Fecha Actualización','Fotos']
   ];
   S.sp.forEach(p=>{
     p.maquinas.forEach(mid=>{
       const f=S.fichas[mid]||{};
       const mats=f.materiales||[];
       if(mats.length===0){
-        matRows.push([p.nombre,mid,f.nombre||'',f.responsable||'',f.fecha||'',f.proxima||'',0,'','','','','','','Sin materiales registrados',f.updated||'']);
+        matRows.push([p.nombre,mid,f.nombre||'',f.responsable||'',f.fecha||'',f.proxima||'',0,'','','','','','','Sin materiales registrados',f.updated||'','']);
       } else {
         mats.forEach((m,i)=>{
+          const fotos=(m.fotos||[]);
+          const fotosCell=fotos.length ? fotos.join(' | ') : '';
           matRows.push([
             p.nombre, mid, f.nombre||'', f.responsable||'', f.fecha||'', f.proxima||'',
             i+1, m.elemento||'', elbl[m.elemento]||'', m.tipo||'', m.ubicacion||'',
-            m.cantidad||'', zlbl[m.zona]||'Sin zonificar', m.obs||'', f.updated||''
+            m.cantidad||'', zlbl[m.zona]||'Sin zonificar', m.obs||'', f.updated||'', fotosCell
           ]);
         });
       }
     });
   });
   const wsMat = XLSX.utils.aoa_to_sheet(matRows);
-  wsMat['!cols']=[{wch:18},{wch:12},{wch:22},{wch:16},{wch:14},{wch:16},{wch:5},{wch:12},{wch:28},{wch:24},{wch:22},{wch:10},{wch:22},{wch:30},{wch:14}];
+  wsMat['!cols']=[{wch:18},{wch:12},{wch:22},{wch:16},{wch:14},{wch:16},{wch:5},{wch:12},{wch:28},{wch:24},{wch:22},{wch:10},{wch:22},{wch:30},{wch:14},{wch:40}];
+  // Convertir URLs de fotos en hipervínculos clickeables
+  matRows.forEach((row,ri)=>{
+    if(ri<4) return; // saltar encabezados
+    const fotosVal=row[15];
+    if(fotosVal && fotosVal.includes('http')){
+      const urls=fotosVal.split(' | ');
+      const cellAddr=XLSX.utils.encode_cell({r:ri,c:15});
+      if(urls.length===1){
+        wsMat[cellAddr]={t:'s',v:'Ver foto',l:{Target:urls[0],Tooltip:'Abrir foto'}};
+      } else {
+        // múltiples fotos: poner links numerados en la misma celda como texto con todos los urls
+        wsMat[cellAddr]={t:'s',v:urls.map((u,i)=>'Foto '+(i+1)+': '+u).join('\n')};
+      }
+    }
+  });
   XLSX.utils.book_append_sheet(wb, wsMat, 'Todos los Materiales');
+
+  // ── HOJA 3 (NUEVA): REQUIEREN REVISIÓN ───────────────────
+  const revRows = [
+    ['TEKNIPLEX — MATERIALES QUE REQUIEREN REVISIÓN / ACCIÓN'],
+    ['Fecha:', new Date().toLocaleDateString('es-CO')],
+    ['* Incluye todos los materiales que tienen observación registrada'],
+    [],
+    ['Subplanta','Código Máquina','Nombre Máquina','Responsable','Última Revisión','Próxima Inspección','#','Elemento (Código)','Elemento (Descripción)','Descripción Material','Ubicación en Máquina','Cantidad','Zona','Observación / Plan de acción','Fecha Actualización','Fotos']
+  ];
+  S.sp.forEach(p=>{
+    p.maquinas.forEach(mid=>{
+      const f=S.fichas[mid]||{};
+      const mats=f.materiales||[];
+      mats.forEach((m,i)=>{
+        // Solo incluir si tiene observación
+        if(!m.obs || !m.obs.trim()) return;
+        const fotos=(m.fotos||[]);
+        const fotosCell=fotos.length ? fotos.join(' | ') : '';
+        revRows.push([
+          p.nombre, mid, f.nombre||'', f.responsable||'', f.fecha||'', f.proxima||'',
+          i+1, m.elemento||'', elbl[m.elemento]||'', m.tipo||'', m.ubicacion||'',
+          m.cantidad||'', zlbl[m.zona]||'Sin zonificar', m.obs||'', f.updated||'', fotosCell
+        ]);
+      });
+    });
+  });
+  // También incluir áreas de planta
+  Object.entries(S.areas||{}).forEach(([aid,area])=>{
+    (area.espacios||[]).forEach(eid=>{
+      const f=S.fichasAreas[eid]||{};
+      const mats=f.materiales||[];
+      const nombreEsp=f.nombreEspacio||(eid.includes('__')?eid.split('__')[1].replace(/_/g,' '):eid);
+      mats.forEach((m,i)=>{
+        if(!m.obs || !m.obs.trim()) return;
+        const fotos=(m.fotos||[]);
+        const fotosCell=fotos.length ? fotos.join(' | ') : '';
+        revRows.push([
+          area.nombre+' (Área)', eid, nombreEsp, f.responsable||'', f.fecha||'', f.proxima||'',
+          i+1, m.elemento||'', elbl[m.elemento]||'', m.tipo||'', m.ubicacion||'',
+          m.cantidad||'', zlbl[m.zona]||'Sin zonificar', m.obs||'', f.updated||'', fotosCell
+        ]);
+      });
+    });
+  });
+  const wsRev = XLSX.utils.aoa_to_sheet(revRows);
+  wsRev['!cols']=[{wch:18},{wch:12},{wch:22},{wch:16},{wch:14},{wch:16},{wch:5},{wch:12},{wch:28},{wch:24},{wch:22},{wch:10},{wch:22},{wch:30},{wch:14},{wch:40}];
+  // Links de fotos en hoja de revisión
+  revRows.forEach((row,ri)=>{
+    if(ri<5) return;
+    const fotosVal=row[15];
+    if(fotosVal && fotosVal.includes('http')){
+      const urls=fotosVal.split(' | ');
+      const cellAddr=XLSX.utils.encode_cell({r:ri,c:15});
+      if(urls.length===1){
+        wsRev[cellAddr]={t:'s',v:'Ver foto',l:{Target:urls[0],Tooltip:'Abrir foto'}};
+      } else {
+        wsRev[cellAddr]={t:'s',v:urls.map((u,i)=>'Foto '+(i+1)+': '+u).join('\n')};
+      }
+    }
+  });
+  const totalConObs=revRows.length-5;
+  XLSX.utils.book_append_sheet(wb, wsRev, 'Requieren Revisión');
 
   // ── HOJA 3: INSPECCIONES ─────────────────────────────────
   const inspRows = [
@@ -1228,9 +1280,8 @@ function exportExcel(){
     p.maquinas.forEach(mid=>{
       const f=S.fichas[mid]||{};
       const insps=f.inspecciones||[];
-      if(insps.length===0){
-        inspRows.push([p.nombre,mid,f.nombre||'',f.responsable||'','','Sin inspecciones registradas']);
-      } else {
+      // Solo incluir si tiene inspecciones reales
+      if(insps.length>0){
         [...insps].reverse().forEach(ins=>{
           inspRows.push([p.nombre,mid,f.nombre||'',f.responsable||'',ins.fecha||'',ins.texto||'']);
         });
@@ -1330,29 +1381,45 @@ function exportExcel(){
     ['TEKNIPLEX — MATERIALES QUEBRADIZOS EN ÁREAS DE PLANTA'],
     ['Fecha:', new Date().toLocaleDateString('es-CO')],
     [],
-    ['Área','Tipo de área','Espacio / Ubicación','Responsable','Última Revisión','Próxima Inspección','#','Elemento (Código)','Elemento (Descripción)','Descripción Material','Ubicación en Espacio','Cantidad','Zona','Observación / Plan de acción','Fecha Actualización']
+    ['Área','Tipo de área','Espacio / Ubicación','Responsable','Última Revisión','Próxima Inspección','#','Elemento (Código)','Elemento (Descripción)','Descripción Material','Ubicación en Espacio','Cantidad','Zona','Observación / Plan de acción','Fecha Actualización','Fotos']
   ];
   Object.entries(S.areas||{}).forEach(([aid, area])=>{
     (area.espacios||[]).forEach(eid=>{
       const f = S.fichasAreas[eid]||{};
       const mats = f.materiales||[];
-      const nombre = (eid.split('__')[1]||eid).replace(/_/g,' ');
+      const nombre = f.nombreEspacio||(eid.includes('__')?(eid.split('__')[1]||eid).replace(/_/g,' '):eid.replace(/_/g,' '));
       if(mats.length===0){
-        areaMatRows.push([area.nombre||aid, area.tipo||'', nombre, f.responsable||'', f.fecha||'', f.proxima||'', 0,'','','','','','','Sin materiales registrados', f.updated||'']);
+        areaMatRows.push([area.nombre||aid, area.tipo||'', nombre, f.responsable||'', f.fecha||'', f.proxima||'', 0,'','','','','','','Sin materiales registrados', f.updated||'','']);
       } else {
         mats.forEach((m,i)=>{
+          const fotos=(m.fotos||[]);
+          const fotosCell=fotos.length ? fotos.join(' | ') : '';
           areaMatRows.push([
             area.nombre||aid, area.tipo||'', nombre,
             f.responsable||'', f.fecha||'', f.proxima||'',
             i+1, m.elemento||'', elbl[m.elemento]||'', m.tipo||'', m.ubicacion||'',
-            m.cantidad||'', zlbl[m.zona]||'Sin zonificar', m.obs||'', f.updated||''
+            m.cantidad||'', zlbl[m.zona]||'Sin zonificar', m.obs||'', f.updated||'', fotosCell
           ]);
         });
       }
     });
   });
   const wsAreaMat = XLSX.utils.aoa_to_sheet(areaMatRows);
-  wsAreaMat['!cols']=[{wch:18},{wch:14},{wch:24},{wch:16},{wch:14},{wch:16},{wch:5},{wch:12},{wch:28},{wch:24},{wch:22},{wch:10},{wch:22},{wch:30},{wch:14}];
+  wsAreaMat['!cols']=[{wch:18},{wch:14},{wch:24},{wch:16},{wch:14},{wch:16},{wch:5},{wch:12},{wch:28},{wch:24},{wch:22},{wch:10},{wch:22},{wch:30},{wch:14},{wch:40}];
+  // Links de fotos en materiales de áreas
+  areaMatRows.forEach((row,ri)=>{
+    if(ri<4) return;
+    const fotosVal=row[15];
+    if(fotosVal && fotosVal.includes('http')){
+      const urls=fotosVal.split(' | ');
+      const cellAddr=XLSX.utils.encode_cell({r:ri,c:15});
+      if(urls.length===1){
+        wsAreaMat[cellAddr]={t:'s',v:'Ver foto',l:{Target:urls[0],Tooltip:'Abrir foto'}};
+      } else {
+        wsAreaMat[cellAddr]={t:'s',v:urls.map((u,i)=>'Foto '+(i+1)+': '+u).join('\n')};
+      }
+    }
+  });
   XLSX.utils.book_append_sheet(wb, wsAreaMat, 'Materiales Áreas');
 
   // ── HOJA: INSPECCIONES DE ÁREAS ───────────────────────────
@@ -1366,10 +1433,9 @@ function exportExcel(){
     (area.espacios||[]).forEach(eid=>{
       const f = S.fichasAreas[eid]||{};
       const insps = f.inspecciones||[];
-      const nombre = (eid.split('__')[1]||eid).replace(/_/g,' ');
-      if(insps.length===0){
-        areaInspRows.push([area.nombre||aid, area.tipo||'', nombre, f.responsable||'','','Sin inspecciones registradas']);
-      } else {
+      const nombre = f.nombreEspacio||(eid.includes('__')?(eid.split('__')[1]||eid).replace(/_/g,' '):eid.replace(/_/g,' '));
+      // Solo incluir si tiene inspecciones reales
+      if(insps.length>0){
         [...insps].reverse().forEach(ins=>{
           areaInspRows.push([area.nombre||aid, area.tipo||'', nombre, f.responsable||'', ins.fecha||'', ins.texto||'']);
         });
@@ -1383,7 +1449,7 @@ function exportExcel(){
   // ── DESCARGAR ─────────────────────────────────────────────
   const fecha = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, 'Tekniplex_Vidrios_'+fecha+'.xlsx');
-  toast('✅ Excel exportado con '+(wb.SheetNames.length)+' hojas');
+  toast('✅ Excel exportado con '+(wb.SheetNames.length)+' hojas · '+totalConObs+' materiales requieren revisión');
 }
 
 // ════════════════════════════════════════════════════════════
