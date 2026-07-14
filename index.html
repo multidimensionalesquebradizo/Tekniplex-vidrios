@@ -112,7 +112,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .maidel{background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3);padding:0;line-height:1;}
 .maidel:hover{color:var(--danger);}
 .sdiv2{height:1px;background:var(--border);margin:16px 0;}
-/* inspecciones */
+/* inspecciones — ahora novedades por máquina */
 .ilist{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;}
 .iitem{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;}
 .idate{font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:600;min-width:90px;margin-top:1px;}
@@ -144,6 +144,38 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .ihrow:last-child{border-bottom:none;}
 .ihdate{font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:600;min-width:90px;}
 .ihtxt{font-size:13px;color:var(--text2);flex:1;line-height:1.5;}
+/* ── PANEL DE INSPECCIONES GLOBAL ── */
+.insp-overlay{display:none;position:fixed;inset:0;background:rgba(10,10,10,.6);z-index:500;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+.insp-overlay.open{display:flex;}
+.insp-panel{background:var(--bg);border-radius:12px;width:100%;max-width:1050px;margin:auto;box-shadow:0 12px 48px rgba(0,0,0,.3);overflow:hidden;}
+.insp-hdr{background:#0f4c91;color:#fff;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;}
+.insp-hdr h2{font-size:14px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+.insp-body{padding:22px;display:flex;flex-direction:column;gap:18px;}
+.insp-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:16px;}
+.insp-tab{padding:9px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text3);background:none;border-top:none;border-left:none;border-right:none;font-family:var(--sans);}
+.insp-tab.active{color:#0f4c91;border-bottom-color:#0f4c91;}
+.insp-tab-content{display:none;}.insp-tab-content.active{display:block;}
+.cron-table{width:100%;border-collapse:collapse;font-size:12px;}
+.cron-table th{text-align:left;padding:7px 10px;border-bottom:2px solid var(--border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);background:var(--surface);}
+.cron-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle;}
+.cron-table tr:hover td{background:var(--surface2);}
+.cron-mes td{background:var(--surface2)!important;font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);padding:10px 10px;}
+.cron-hoy td{background:#e8f2ec!important;}
+.cron-pasada{opacity:.45;}
+.zpill-z1{background:#fdf0f0;color:#8b2020;display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;}
+.zpill-z2{background:#fef8ec;color:#b84000;display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;}
+.zpill-z3{background:#fff8e8;color:#7a4a00;display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;}
+.zpill-z4{background:#e8f2ec;color:#1a6b38;display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;}
+.insp-reg-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:10px;}
+.insp-reg-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:10px;}
+.insp-reg-fecha{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);}
+.insp-reg-body{font-size:12px;color:var(--text2);line-height:1.6;}
+.insp-reg-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;padding:0;flex-shrink:0;}
+.insp-reg-del:hover{color:var(--danger);}
+.est-pill{display:inline-block;font-size:10px;padding:2px 9px;border-radius:10px;font-weight:600;}
+.est-realizada{background:#e8f2ec;color:#1a6b38;}
+.est-parcial{background:#fef8ec;color:#7a4a00;}
+.est-pendiente{background:#fdf0f0;color:#8b2020;}
 /* misc */
 .empty{text-align:center;padding:60px 20px;color:var(--text3);}
 .empty .ico{font-size:36px;margin-bottom:10px;}
@@ -236,6 +268,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
   <div class="hright">
     <span class="hcount" id="hcount"></span>
     <button class="mode-badge btn-dash" onclick="openDash()" style="border-radius:6px;padding:5px 11px;">📊 Dashboard</button>
+    <button class="mode-badge" onclick="openInsp()" style="border-radius:6px;padding:5px 11px;background:#0f4c91;color:#fff;border-color:#0a3568;">📋 Inspecciones</button>
     <button class="mode-badge btn-excel" onclick="exportExcel()" style="border-radius:6px;padding:5px 11px;">📥 Exportar Excel</button>
     <button class="mode-badge" id="mbadge" onclick="toggleEdit()">Solo lectura</button>
   </div>
@@ -264,7 +297,25 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 </div>
 <div class="toast" id="toast"></div>
 
-<!-- ── DASHBOARD OVERLAY ── -->
+<!-- ── PANEL DE INSPECCIONES ── -->
+<div class="insp-overlay" id="insp-overlay">
+  <div class="insp-panel">
+    <div class="insp-hdr">
+      <h2>📋 Inspecciones — Tekniplex FY27</h2>
+      <button class="xbtn" onclick="closeInsp()" style="color:#fff;font-size:22px;">×</button>
+    </div>
+    <div class="insp-body">
+      <div class="insp-tabs">
+        <button class="insp-tab active" onclick="inspTab('cronograma')">📅 Cronograma programado</button>
+        <button class="insp-tab" onclick="inspTab('registrar')">✏ Registrar inspección</button>
+        <button class="insp-tab" onclick="inspTab('historial')">📂 Historial realizadas</button>
+      </div>
+      <div id="insp-tab-cronograma" class="insp-tab-content active"></div>
+      <div id="insp-tab-registrar" class="insp-tab-content"></div>
+      <div id="insp-tab-historial" class="insp-tab-content"></div>
+    </div>
+  </div>
+</div>
 <div class="dash-overlay" id="dash-overlay">
   <div class="dash-panel">
     <div class="dash-hdr">
@@ -314,10 +365,9 @@ const ELEMS = [
   {id:'LE',desc:'Lámpara de emergencia'},
   {id:'LB',desc:'Lámpara bombillo con protección'},
   {id:'MA',desc:'Máquina con acrílico'},
-  {id:'PT',desc:'Plano / Tablero / Pantalla'},
+  {id:'PT',desc:'Plano de evacuación / Tablero'},
   {id:'AC',desc:'Acrílicos en zonas comunes'},
   {id:'VI',desc:'Vidrios de puertas y ventanas'},
-  {id:'EM',desc:'Equipos de medición'},
 ];
 
 const AREAS_DEF = {
@@ -342,7 +392,7 @@ const SP_DEF = [
   {id:'maquilas',   nombre:'Maquilas',           maquinas:['ULMA','EM08']},
 ];
 
-let S = {sp:[],fichas:{},areas:{},fichasAreas:{},planta:null,maquina:null,area:null,espacio:null,edit:false,editing:null,modo:'sp'};
+let S = {sp:[],fichas:{},areas:{},fichasAreas:{},inspecciones:[],planta:null,maquina:null,area:null,espacio:null,edit:false,editing:null,modo:'sp'};
 let eMats=[], eInsps=[];
 
 async function save(){
@@ -351,7 +401,7 @@ async function save(){
     await DB.ref('fichas').set(S.fichas);
     await DB.ref('areas').set(S.areas);
     await DB.ref('fichasAreas').set(S.fichasAreas);
-    // also cache locally
+    await DB.ref('inspecciones').set(S.inspecciones);
     localStorage.setItem('tkx_sp5',JSON.stringify(S.sp));
     localStorage.setItem('tkx_fc5',JSON.stringify(S.fichas));
   }catch(e){
@@ -438,9 +488,10 @@ async function load(){
     S.fichas = fcSnap.exists() ? fcSnap.val() : {};
     const arSnap = await DB.ref('areas').get();
     const faSnap = await DB.ref('fichasAreas').get();
-    S.areas      = arSnap.exists() ? arSnap.val() : JSON.parse(JSON.stringify(AREAS_DEF));
-    S.fichasAreas= faSnap.exists() ? faSnap.val() : {};
-    // cache locally
+    const inSnap = await DB.ref('inspecciones').get();
+    S.areas       = arSnap.exists() ? arSnap.val() : JSON.parse(JSON.stringify(AREAS_DEF));
+    S.fichasAreas = faSnap.exists() ? faSnap.val() : {};
+    S.inspecciones= inSnap.exists() ? inSnap.val() : [];
     localStorage.setItem('tkx_sp5',JSON.stringify(S.sp));
     localStorage.setItem('tkx_fc5',JSON.stringify(S.fichas));
   }catch(e){
@@ -450,7 +501,8 @@ async function load(){
       const fc=localStorage.getItem('tkx_fc5');
       S.sp     = sp ? JSON.parse(sp) : JSON.parse(JSON.stringify(SP_DEF));
       S.fichas = fc ? JSON.parse(fc) : {};
-    }catch(e2){S.sp=JSON.parse(JSON.stringify(SP_DEF));S.fichas={};}
+      S.inspecciones=[];
+    }catch(e2){S.sp=JSON.parse(JSON.stringify(SP_DEF));S.fichas={};S.inspecciones=[];}
   }
 }
 
@@ -657,7 +709,7 @@ function renderDetail(){
     '<div class="drow"><span class="dkey">Próxima inspección</span><span class="dval mono">'+esc(f.proxima||'—')+'</span></div>'+
     '<div class="drow"><span class="dkey">Actualizado</span><span class="dval mono">'+esc(f.updated||'—')+'</span></div></div>'+
     '<div class="dsec"><div class="dsect">Materiales quebradizos ('+mats.length+')</div>'+matSection+'</div>'+
-    '<div class="dsec"><div class="dsect">Historial de inspecciones ('+insps.length+')</div>'+inspSection+'</div>'+
+    '<div class="dsec"><div class="dsect">Novedades ('+insps.length+')</div>'+inspSection+'</div>'+
     (f.observaciones?'<div class="dsec"><div class="dsect">Observaciones generales</div><p style="font-size:13px;color:var(--text2);line-height:1.6">'+esc(f.observaciones)+'</p></div>':'')+
     '</div></div>';
 }
@@ -681,7 +733,7 @@ function editM(mid){
     '</div>'+
     '<div class="fg"><label class="fl">Observaciones generales</label><textarea class="fta" id="fo" placeholder="Notas generales...">'+esc(f.observaciones||'')+'</textarea></div>'+
     '<div class="sdiv2"></div>'+
-    '<div class="msh"><span class="mst">Historial de inspecciones</span><button class="btn btn-sm btn-p" onclick="addInsp()">+ Agregar inspección</button></div>'+
+    '<div class="msh"><span class="mst">Novedades</span><button class="btn btn-sm btn-p" onclick="addInsp()">+ Agregar novedad</button></div>'+
     '<div id="ilist"></div>'+
     '<div class="sdiv2"></div>'+
     '<div class="msh"><span class="mst">Materiales quebradizos</span><button class="btn btn-sm btn-p" onclick="addMat()">+ Agregar material</button></div>'+
@@ -980,7 +1032,7 @@ function renderEspacioDetail(){
     '<div class="drow"><span class="dkey">Última revisión</span><span class="dval mono">'+esc(f.fecha||'—')+'</span></div>'+
     '<div class="drow"><span class="dkey">Próxima inspección</span><span class="dval mono">'+esc(f.proxima||'—')+'</span></div></div>'+
     '<div class="dsec"><div class="dsect">Materiales quebradizos ('+mats.length+')</div>'+matSection+'</div>'+
-    '<div class="dsec"><div class="dsect">Historial de inspecciones ('+insps.length+')</div>'+inspSection+'</div>'+
+    '<div class="dsec"><div class="dsect">Novedades ('+insps.length+')</div>'+inspSection+'</div>'+
     (f.observaciones?'<div class="dsec"><div class="dsect">Observaciones</div><p style="font-size:13px;color:var(--text2);line-height:1.6">'+esc(f.observaciones)+'</p></div>':'')+
     '</div></div>';
 }
@@ -1004,7 +1056,7 @@ function editEspacio(eid){
     '</div>'+
     '<div class="fg"><label class="fl">Observaciones generales</label><textarea class="fta" id="fo" placeholder="Notas...">'+esc(f.observaciones||'')+'</textarea></div>'+
     '<div class="sdiv2"></div>'+
-    '<div class="msh"><span class="mst">Historial de inspecciones</span><button class="btn btn-sm btn-p" onclick="addInsp()">+ Agregar inspección</button></div>'+
+    '<div class="msh"><span class="mst">Novedades</span><button class="btn btn-sm btn-p" onclick="addInsp()">+ Agregar novedad</button></div>'+
     '<div id="ilist"></div>'+
     '<div class="sdiv2"></div>'+
     '<div class="msh"><span class="mst">Materiales quebradizos</span><button class="btn btn-sm btn-p" onclick="addMat()">+ Agregar material</button></div>'+
@@ -1104,6 +1156,283 @@ function routeFromHash(){
     S.maquina = realMid;
   }
   render();
+}
+
+// ════════════════════════════════════════════════════════════
+// CRONOGRAMA FY27 — datos del Excel
+// ════════════════════════════════════════════════════════════
+const CRONOGRAMA_FY27 = [
+  // JULIO 2026
+  {mes:'Julio 2026',fecha:'2026-07-03',dia:'Vie',zona:'Zona 4',grupo:'Todas',subplantas:'Todas',frec:'c/60 días'},
+  {mes:'Julio 2026',fecha:'2026-07-06',dia:'Lun',zona:'Zona 3',grupo:'Grupo A',subplantas:'OMV, Industrial, Inyección, Papel 1 y 3',frec:'c/45 días'},
+  {mes:'Julio 2026',fecha:'2026-07-10',dia:'Vie',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Julio 2026',fecha:'2026-07-13',dia:'Lun',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Julio 2026',fecha:'2026-07-13',dia:'Lun',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Julio 2026',fecha:'2026-07-27',dia:'Lun',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Julio 2026',fecha:'2026-07-27',dia:'Lun',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Julio 2026',fecha:'2026-07-27',dia:'Lun',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Julio 2026',fecha:'2026-07-28',dia:'Mar',zona:'Zona 2',grupo:'Grupo A',subplantas:'OMV, Industrial, Inyección',frec:'c/30 días'},
+  {mes:'Julio 2026',fecha:'2026-07-29',dia:'Mié',zona:'Zona 2',grupo:'Grupo B',subplantas:'Papel 1 y 3, Foil, Laminación-Barrera, Encartonado',frec:'c/30 días'},
+  {mes:'Julio 2026',fecha:'2026-07-30',dia:'Jue',zona:'Zona 2',grupo:'Grupo C',subplantas:'Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/30 días'},
+  // AGOSTO 2026
+  {mes:'Agosto 2026',fecha:'2026-08-10',dia:'Lun',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Agosto 2026',fecha:'2026-08-11',dia:'Mar',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Agosto 2026',fecha:'2026-08-12',dia:'Mié',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Agosto 2026',fecha:'2026-08-19',dia:'Mié',zona:'Zona 3',grupo:'Grupo B',subplantas:'Foil, Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/45 días'},
+  {mes:'Agosto 2026',fecha:'2026-08-25',dia:'Mar',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Agosto 2026',fecha:'2026-08-26',dia:'Mié',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Agosto 2026',fecha:'2026-08-27',dia:'Jue',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Agosto 2026',fecha:'2026-08-28',dia:'Vie',zona:'Zona 2',grupo:'Grupo A',subplantas:'OMV, Industrial, Inyección',frec:'c/30 días'},
+  {mes:'Agosto 2026',fecha:'2026-08-31',dia:'Lun',zona:'Zona 2',grupo:'Grupo B',subplantas:'Papel 1 y 3, Foil, Laminación-Barrera, Encartonado',frec:'c/30 días'},
+  {mes:'Agosto 2026',fecha:'2026-08-31',dia:'Lun',zona:'Zona 2',grupo:'Grupo C',subplantas:'Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/30 días'},
+  // SEPTIEMBRE 2026
+  {mes:'Septiembre 2026',fecha:'2026-09-01',dia:'Mar',zona:'Zona 4',grupo:'Todas',subplantas:'Todas',frec:'c/60 días'},
+  {mes:'Septiembre 2026',fecha:'2026-09-10',dia:'Jue',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Septiembre 2026',fecha:'2026-09-11',dia:'Vie',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Septiembre 2026',fecha:'2026-09-14',dia:'Lun',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Septiembre 2026',fecha:'2026-09-25',dia:'Vie',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Septiembre 2026',fecha:'2026-09-28',dia:'Lun',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Septiembre 2026',fecha:'2026-09-28',dia:'Lun',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Septiembre 2026',fecha:'2026-09-28',dia:'Lun',zona:'Zona 2',grupo:'Grupo A',subplantas:'OMV, Industrial, Inyección',frec:'c/30 días'},
+  {mes:'Septiembre 2026',fecha:'2026-09-29',dia:'Mar',zona:'Zona 2',grupo:'Grupo B',subplantas:'Papel 1 y 3, Foil, Laminación-Barrera, Encartonado',frec:'c/30 días'},
+  {mes:'Septiembre 2026',fecha:'2026-09-30',dia:'Mié',zona:'Zona 2',grupo:'Grupo C',subplantas:'Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/30 días'},
+  // OCTUBRE 2026
+  {mes:'Octubre 2026',fecha:'2026-10-05',dia:'Lun',zona:'Zona 3',grupo:'Grupo A',subplantas:'OMV, Industrial, Inyección, Papel 1 y 3',frec:'c/45 días'},
+  {mes:'Octubre 2026',fecha:'2026-10-13',dia:'Mar',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Octubre 2026',fecha:'2026-10-13',dia:'Mar',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Octubre 2026',fecha:'2026-10-13',dia:'Mar',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Octubre 2026',fecha:'2026-10-26',dia:'Lun',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Octubre 2026',fecha:'2026-10-26',dia:'Lun',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Octubre 2026',fecha:'2026-10-27',dia:'Mar',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Octubre 2026',fecha:'2026-10-28',dia:'Mié',zona:'Zona 2',grupo:'Grupo A',subplantas:'OMV, Industrial, Inyección',frec:'c/30 días'},
+  {mes:'Octubre 2026',fecha:'2026-10-29',dia:'Jue',zona:'Zona 2',grupo:'Grupo B',subplantas:'Papel 1 y 3, Foil, Laminación-Barrera, Encartonado',frec:'c/30 días'},
+  {mes:'Octubre 2026',fecha:'2026-10-30',dia:'Vie',zona:'Zona 2',grupo:'Grupo C',subplantas:'Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/30 días'},
+  // NOVIEMBRE 2026
+  {mes:'Noviembre 2026',fecha:'2026-11-03',dia:'Mar',zona:'Zona 4',grupo:'Todas',subplantas:'Todas',frec:'c/60 días'},
+  {mes:'Noviembre 2026',fecha:'2026-11-10',dia:'Mar',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Noviembre 2026',fecha:'2026-11-11',dia:'Mié',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Noviembre 2026',fecha:'2026-11-12',dia:'Jue',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Noviembre 2026',fecha:'2026-11-17',dia:'Mar',zona:'Zona 3',grupo:'Grupo B',subplantas:'Foil, Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/45 días'},
+  {mes:'Noviembre 2026',fecha:'2026-11-25',dia:'Mié',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Noviembre 2026',fecha:'2026-11-26',dia:'Jue',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Noviembre 2026',fecha:'2026-11-27',dia:'Vie',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Noviembre 2026',fecha:'2026-11-30',dia:'Lun',zona:'Zona 2',grupo:'Grupo A',subplantas:'OMV, Industrial, Inyección',frec:'c/30 días'},
+  {mes:'Noviembre 2026',fecha:'2026-11-30',dia:'Lun',zona:'Zona 2',grupo:'Grupo B',subplantas:'Papel 1 y 3, Foil, Laminación-Barrera, Encartonado',frec:'c/30 días'},
+  {mes:'Noviembre 2026',fecha:'2026-11-30',dia:'Lun',zona:'Zona 2',grupo:'Grupo C',subplantas:'Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/30 días'},
+  // DICIEMBRE 2026
+  {mes:'Diciembre 2026',fecha:'2026-12-10',dia:'Jue',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Diciembre 2026',fecha:'2026-12-11',dia:'Vie',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Diciembre 2026',fecha:'2026-12-14',dia:'Lun',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Diciembre 2026',fecha:'2026-12-28',dia:'Lun',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Diciembre 2026',fecha:'2026-12-28',dia:'Lun',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Diciembre 2026',fecha:'2026-12-28',dia:'Lun',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Diciembre 2026',fecha:'2026-12-28',dia:'Lun',zona:'Zona 2',grupo:'Grupo A',subplantas:'OMV, Industrial, Inyección',frec:'c/30 días'},
+  {mes:'Diciembre 2026',fecha:'2026-12-29',dia:'Mar',zona:'Zona 2',grupo:'Grupo B',subplantas:'Papel 1 y 3, Foil, Laminación-Barrera, Encartonado',frec:'c/30 días'},
+  {mes:'Diciembre 2026',fecha:'2026-12-30',dia:'Mié',zona:'Zona 2',grupo:'Grupo C',subplantas:'Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/30 días'},
+  {mes:'Diciembre 2026',fecha:'2026-12-30',dia:'Mié',zona:'Zona 4',grupo:'Todas',subplantas:'Todas',frec:'c/60 días'},
+  // ENERO 2027
+  {mes:'Enero 2027',fecha:'2027-01-04',dia:'Lun',zona:'Zona 3',grupo:'Grupo A',subplantas:'OMV, Industrial, Inyección, Papel 1 y 3',frec:'c/45 días'},
+  {mes:'Enero 2027',fecha:'2027-01-12',dia:'Mar',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Enero 2027',fecha:'2027-01-12',dia:'Mar',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Enero 2027',fecha:'2027-01-12',dia:'Mar',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Enero 2027',fecha:'2027-01-25',dia:'Lun',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Enero 2027',fecha:'2027-01-26',dia:'Mar',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Enero 2027',fecha:'2027-01-27',dia:'Mié',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Enero 2027',fecha:'2027-01-28',dia:'Jue',zona:'Zona 2',grupo:'Grupo A',subplantas:'OMV, Industrial, Inyección',frec:'c/30 días'},
+  {mes:'Enero 2027',fecha:'2027-01-29',dia:'Vie',zona:'Zona 2',grupo:'Grupo B',subplantas:'Papel 1 y 3, Foil, Laminación-Barrera, Encartonado',frec:'c/30 días'},
+  // FEBRERO 2027
+  {mes:'Febrero 2027',fecha:'2027-02-01',dia:'Lun',zona:'Zona 2',grupo:'Grupo C',subplantas:'Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/30 días'},
+  {mes:'Febrero 2027',fecha:'2027-02-10',dia:'Mié',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Febrero 2027',fecha:'2027-02-11',dia:'Jue',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Febrero 2027',fecha:'2027-02-12',dia:'Vie',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Febrero 2027',fecha:'2027-02-15',dia:'Lun',zona:'Zona 3',grupo:'Grupo B',subplantas:'Foil, Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/45 días'},
+  {mes:'Febrero 2027',fecha:'2027-02-25',dia:'Jue',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Febrero 2027',fecha:'2027-02-26',dia:'Vie',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  // MARZO 2027
+  {mes:'Marzo 2027',fecha:'2027-03-01',dia:'Lun',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Marzo 2027',fecha:'2027-03-01',dia:'Lun',zona:'Zona 2',grupo:'Grupo A',subplantas:'OMV, Industrial, Inyección',frec:'c/30 días'},
+  {mes:'Marzo 2027',fecha:'2027-03-01',dia:'Lun',zona:'Zona 2',grupo:'Grupo B',subplantas:'Papel 1 y 3, Foil, Laminación-Barrera, Encartonado',frec:'c/30 días'},
+  {mes:'Marzo 2027',fecha:'2027-03-01',dia:'Lun',zona:'Zona 2',grupo:'Grupo C',subplantas:'Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/30 días'},
+  {mes:'Marzo 2027',fecha:'2027-03-01',dia:'Lun',zona:'Zona 4',grupo:'Todas',subplantas:'Todas',frec:'c/60 días'},
+  {mes:'Marzo 2027',fecha:'2027-03-10',dia:'Mié',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Marzo 2027',fecha:'2027-03-11',dia:'Jue',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Marzo 2027',fecha:'2027-03-12',dia:'Vie',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Marzo 2027',fecha:'2027-03-29',dia:'Lun',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Marzo 2027',fecha:'2027-03-29',dia:'Lun',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Marzo 2027',fecha:'2027-03-29',dia:'Lun',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+  {mes:'Marzo 2027',fecha:'2027-03-29',dia:'Lun',zona:'Zona 2',grupo:'Grupo A',subplantas:'OMV, Industrial, Inyección',frec:'c/30 días'},
+  {mes:'Marzo 2027',fecha:'2027-03-29',dia:'Lun',zona:'Zona 2',grupo:'Grupo B',subplantas:'Papel 1 y 3, Foil, Laminación-Barrera, Encartonado',frec:'c/30 días'},
+  {mes:'Marzo 2027',fecha:'2027-03-30',dia:'Mar',zona:'Zona 2',grupo:'Grupo C',subplantas:'Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/30 días'},
+  // ABRIL 2027
+  {mes:'Abril 2027',fecha:'2027-04-01',dia:'Jue',zona:'Zona 3',grupo:'Grupo A',subplantas:'OMV, Industrial, Inyección, Papel 1 y 3',frec:'c/45 días'},
+  {mes:'Abril 2027',fecha:'2027-04-12',dia:'Lun',zona:'Zona 1',grupo:'Grupo A',subplantas:'OMV, Industrial',frec:'c/15 días'},
+  {mes:'Abril 2027',fecha:'2027-04-12',dia:'Lun',zona:'Zona 1',grupo:'Grupo B',subplantas:'Inyección, Papel 1 y 3, Foil',frec:'c/15 días'},
+  {mes:'Abril 2027',fecha:'2027-04-12',dia:'Lun',zona:'Zona 1',grupo:'Grupo C',subplantas:'Laminación-Barrera, Encartonado, Mangas, Impresión, Película, Etiqueta, Maquilas',frec:'c/15 días'},
+];
+
+function zonaClass(z){
+  if(z==='Zona 1') return 'zpill-z1';
+  if(z==='Zona 2') return 'zpill-z2';
+  if(z==='Zona 3') return 'zpill-z3';
+  return 'zpill-z4';
+}
+
+// ════════════════════════════════════════════════════════════
+// PANEL DE INSPECCIONES — funciones
+// ════════════════════════════════════════════════════════════
+function openInsp(){
+  document.getElementById('insp-overlay').classList.add('open');
+  inspTab('cronograma');
+}
+function closeInsp(){
+  document.getElementById('insp-overlay').classList.remove('open');
+}
+document.getElementById('insp-overlay').addEventListener('click',function(e){if(e.target===this)closeInsp();});
+
+function inspTab(tab){
+  document.querySelectorAll('.insp-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.insp-tab-content').forEach(t=>t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('insp-tab-'+tab).classList.add('active');
+  if(tab==='cronograma') renderCronograma();
+  if(tab==='registrar') renderFormInsp();
+  if(tab==='historial') renderHistorialInsp();
+}
+
+function renderCronograma(){
+  const hoy = today();
+  let html = '<div style="overflow-x:auto"><table class="cron-table"><thead><tr>'+
+    '<th>Fecha</th><th>Día</th><th>Zona</th><th>Grupo</th><th>Subplantas</th><th>Frecuencia</th></tr></thead><tbody>';
+  let mesActual = '';
+  CRONOGRAMA_FY27.forEach(r=>{
+    if(r.mes!==mesActual){
+      mesActual=r.mes;
+      html+=`<tr class="cron-mes"><td colspan="6">${esc(r.mes)}</td></tr>`;
+    }
+    const pasada = r.fecha < hoy;
+    const esHoy  = r.fecha === hoy;
+    const cls = esHoy ? 'cron-hoy' : (pasada ? 'cron-pasada' : '');
+    const fechaDisplay = r.fecha.split('-').reverse().join('/');
+    html+=`<tr class="${cls}">
+      <td style="font-family:var(--mono);font-size:12px;white-space:nowrap">${fechaDisplay}</td>
+      <td style="font-size:11px;color:var(--text3)">${esc(r.dia)}</td>
+      <td><span class="${zonaClass(r.zona)}">${esc(r.zona)}</span></td>
+      <td style="font-size:12px">${esc(r.grupo)}</td>
+      <td style="font-size:11px;color:var(--text2);max-width:300px">${esc(r.subplantas)}</td>
+      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${esc(r.frec)}</td>
+    </tr>`;
+  });
+  html+='</tbody></table></div>';
+  document.getElementById('insp-tab-cronograma').innerHTML=html;
+}
+
+function renderFormInsp(){
+  document.getElementById('insp-tab-registrar').innerHTML=`
+    <div style="max-width:680px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="fg"><label class="fl">Fecha de realización *</label>
+          <input class="fi" type="date" id="insp-fecha" value="${today()}"></div>
+        <div class="fg"><label class="fl">Inspector / Responsable *</label>
+          <input class="fi" id="insp-resp" placeholder="Nombre del inspector"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="fg"><label class="fl">Zona inspeccionada</label>
+          <select class="fi" id="insp-zona">
+            <option value="">Seleccionar…</option>
+            <option>Zona 1 — Crítico alto</option>
+            <option>Zona 2 — Crítico</option>
+            <option>Zona 3 — No crítico</option>
+            <option>Zona 4 — Bajo riesgo</option>
+            <option>Todas las zonas</option>
+          </select></div>
+        <div class="fg"><label class="fl">Grupo</label>
+          <select class="fi" id="insp-grupo">
+            <option value="">Seleccionar…</option>
+            <option>Grupo A</option><option>Grupo B</option><option>Grupo C</option><option>Todas</option>
+          </select></div>
+        <div class="fg"><label class="fl">Estado</label>
+          <select class="fi" id="insp-estado">
+            <option value="Realizada">✅ Realizada</option>
+            <option value="Parcial">⚠ Parcial</option>
+            <option value="Pendiente">❌ Pendiente</option>
+          </select></div>
+      </div>
+      <div class="fg" style="margin-bottom:12px"><label class="fl">Subplantas / Áreas inspeccionadas</label>
+        <input class="fi" id="insp-subplantas" placeholder="ej: OMV, Industrial, Inyección…"></div>
+      <div class="fg" style="margin-bottom:12px"><label class="fl">Hallazgos encontrados</label>
+        <textarea class="fta" id="insp-hallazgos" placeholder="¿Qué se encontró durante la inspección? Materiales rotos, faltantes, en riesgo…" style="min-height:80px"></textarea></div>
+      <div class="fg" style="margin-bottom:12px"><label class="fl">Acciones tomadas</label>
+        <textarea class="fta" id="insp-acciones" placeholder="¿Qué se hizo? Reemplazos, reportes, notificaciones…" style="min-height:60px"></textarea></div>
+      <div class="fg" style="margin-bottom:16px"><label class="fl">Observaciones adicionales</label>
+        <textarea class="fta" id="insp-obs" placeholder="Notas generales de la inspección…" style="min-height:60px"></textarea></div>
+      <button class="btn btn-p" onclick="guardarInsp()" style="background:#0f4c91;border-color:#0a3568">💾 Guardar inspección</button>
+    </div>`;
+}
+
+async function guardarInsp(){
+  const fecha=document.getElementById('insp-fecha').value;
+  const resp=document.getElementById('insp-resp').value.trim();
+  if(!fecha||!resp){toast('⚠ Completa fecha y responsable');return;}
+  const insp={
+    id: Date.now(),
+    fecha,
+    responsable: resp,
+    zona:        document.getElementById('insp-zona').value,
+    grupo:       document.getElementById('insp-grupo').value,
+    estado:      document.getElementById('insp-estado').value,
+    subplantas:  document.getElementById('insp-subplantas').value.trim(),
+    hallazgos:   document.getElementById('insp-hallazgos').value.trim(),
+    acciones:    document.getElementById('insp-acciones').value.trim(),
+    observaciones:document.getElementById('insp-obs').value.trim(),
+    registrado:  today(),
+  };
+  if(!Array.isArray(S.inspecciones)) S.inspecciones=[];
+  S.inspecciones.unshift(insp);
+  await save();
+  toast('✅ Inspección guardada');
+  inspTab('historial');
+  document.querySelectorAll('.insp-tab')[2].click();
+}
+
+function renderHistorialInsp(){
+  const insps = S.inspecciones||[];
+  if(!insps.length){
+    document.getElementById('insp-tab-historial').innerHTML=
+      '<p style="color:var(--text3);font-size:13px;text-align:center;padding:40px">No hay inspecciones registradas aún.</p>';
+    return;
+  }
+  const estClass={Realizada:'est-realizada',Parcial:'est-parcial',Pendiente:'est-pendiente'};
+  let html='';
+  insps.forEach((ins,idx)=>{
+    const fechaD=(ins.fecha||'').split('-').reverse().join('/');
+    html+=`<div class="insp-reg-card">
+      <div class="insp-reg-hdr">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="insp-reg-fecha">${fechaD}</span>
+          <span class="${estClass[ins.estado]||'est-realizada'} est-pill">${esc(ins.estado||'Realizada')}</span>
+          ${ins.zona?`<span class="${zonaClass(ins.zona.split(' —')[0])}">${esc(ins.zona)}</span>`:''}
+          ${ins.grupo?`<span style="font-size:11px;color:var(--text3)">${esc(ins.grupo)}</span>`:''}
+        </div>
+        ${S.edit?`<button class="insp-reg-del" onclick="delInspGlobal(${idx})" title="Eliminar">🗑</button>`:''}
+      </div>
+      <div class="insp-reg-body">
+        <div style="margin-bottom:4px"><strong>Inspector:</strong> ${esc(ins.responsable||'—')}</div>
+        ${ins.subplantas?`<div style="margin-bottom:4px"><strong>Subplantas/Áreas:</strong> ${esc(ins.subplantas)}</div>`:''}
+        ${ins.hallazgos?`<div style="margin-bottom:4px"><strong>Hallazgos:</strong> ${esc(ins.hallazgos)}</div>`:''}
+        ${ins.acciones?`<div style="margin-bottom:4px"><strong>Acciones:</strong> ${esc(ins.acciones)}</div>`:''}
+        ${ins.observaciones?`<div><strong>Observaciones:</strong> ${esc(ins.observaciones)}</div>`:''}
+      </div>
+    </div>`;
+  });
+  document.getElementById('insp-tab-historial').innerHTML=html;
+}
+
+async function delInspGlobal(idx){
+  if(!confirm('¿Eliminar esta inspección?')) return;
+  S.inspecciones.splice(idx,1);
+  await save();
+  renderHistorialInsp();
+  toast('Inspección eliminada');
 }
 
 load().then(()=>{
@@ -1291,7 +1620,7 @@ function exportExcel(){
   });
   const wsInsp = XLSX.utils.aoa_to_sheet(inspRows);
   wsInsp['!cols']=[{wch:18},{wch:12},{wch:22},{wch:16},{wch:14},{wch:60}];
-  XLSX.utils.book_append_sheet(wb, wsInsp, 'Historial Inspecciones');
+  XLSX.utils.book_append_sheet(wb, wsInsp, 'Novedades por Máquina');
 
   // ── HOJA 4: MÁQUINAS SIN DATOS ───────────────────────────
   const sinDatos = [
@@ -1446,6 +1775,39 @@ function exportExcel(){
   const wsAreaInsp = XLSX.utils.aoa_to_sheet(areaInspRows);
   wsAreaInsp['!cols']=[{wch:18},{wch:14},{wch:24},{wch:16},{wch:14},{wch:60}];
   XLSX.utils.book_append_sheet(wb, wsAreaInsp, 'Inspecciones Áreas');
+
+  // ── HOJA: INSPECCIONES REALIZADAS ────────────────────────
+  const inspGRows=[
+    ['TEKNIPLEX — INSPECCIONES REALIZADAS FY27'],
+    ['Fecha exportación:', new Date().toLocaleDateString('es-CO')],
+    [],
+    ['Fecha','Inspector / Responsable','Zona','Grupo','Subplantas / Áreas','Estado','Hallazgos','Acciones tomadas','Observaciones','Fecha de registro']
+  ];
+  (S.inspecciones||[]).forEach(ins=>{
+    inspGRows.push([
+      ins.fecha||'', ins.responsable||'', ins.zona||'', ins.grupo||'',
+      ins.subplantas||'', ins.estado||'Realizada',
+      ins.hallazgos||'', ins.acciones||'', ins.observaciones||'',
+      ins.registrado||''
+    ]);
+  });
+  const wsInspG=XLSX.utils.aoa_to_sheet(inspGRows);
+  wsInspG['!cols']=[{wch:12},{wch:22},{wch:22},{wch:10},{wch:40},{wch:12},{wch:50},{wch:40},{wch:40},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, wsInspG, 'Inspecciones Realizadas');
+
+  // ── HOJA: CRONOGRAMA FY27 ─────────────────────────────────
+  const cronRows=[
+    ['TEKNIPLEX — CRONOGRAMA DE INSPECCIONES FY27 (Julio 2026 — Abril 2027)'],
+    [],
+    ['Mes','Fecha','Día semana','Zona','Grupo','Subplantas involucradas','Frecuencia']
+  ];
+  CRONOGRAMA_FY27.forEach(r=>{
+    const fechaD=r.fecha.split('-').reverse().join('/');
+    cronRows.push([r.mes, fechaD, r.dia, r.zona, r.grupo, r.subplantas, r.frec]);
+  });
+  const wsCron=XLSX.utils.aoa_to_sheet(cronRows);
+  wsCron['!cols']=[{wch:16},{wch:12},{wch:10},{wch:22},{wch:10},{wch:60},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, wsCron, 'Cronograma FY27');
 
   // ── DESCARGAR ─────────────────────────────────────────────
   const fecha = new Date().toISOString().slice(0,10);
