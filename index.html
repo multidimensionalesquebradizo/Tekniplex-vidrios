@@ -726,9 +726,11 @@ function editM(mid){
   document.getElementById('mtitle').textContent='Editar ficha — '+mid;
   document.getElementById('mbdy').innerHTML=
     '<div class="frow">'+
+    '<div class="fg"><label class="fl">Código de máquina</label>'+
+    '<input class="fi" id="fmid" value="'+esc(mid)+'" placeholder="ej: IM01" style="font-family:var(--mono);text-transform:uppercase" title="Cambia el código si lo pusiste mal"></div>'+
     '<div class="fg"><label class="fl">Nombre / descripción</label><input class="fi" id="fn" value="'+esc(f.nombre||'')+'" placeholder="ej: Inyectora principal"></div>'+
-    '<div class="fg"><label class="fl">Responsable de área</label><input class="fi" id="fr" value="'+esc(f.responsable||'')+'" placeholder="Nombre"></div>'+
     '</div>'+
+    '<div class="fg"><label class="fl">Responsable de área</label><input class="fi" id="fr" value="'+esc(f.responsable||'')+'" placeholder="Nombre"></div>'+
     '<div class="frow">'+
     '<div class="fg"><label class="fl">Fecha última revisión</label><input class="fi" type="date" id="ff" value="'+esc(f.fecha||'')+'"></div>'+
     '<div class="fg"><label class="fl">Próxima inspección</label><input class="fi" type="date" id="fp" value="'+esc(f.proxima||'')+'"></div>'+
@@ -878,14 +880,16 @@ function addMat(){
 function delMat(i){eMats.splice(i,1);renderMList();}
 
 function saveFicha(){
-  // capture text inputs
+  // capture text inputs from material rows
   eMats.forEach((m,i)=>{
     const t=document.getElementById('mt'+i);const u=document.getElementById('mu'+i);
     const c=document.getElementById('mc'+i);const o=document.getElementById('mo'+i);
     if(t)m.tipo=t.value;if(u)m.ubicacion=u.value;if(c)m.cantidad=c.value;if(o)m.obs=o.value;
   });
-  const mid=S.editing;
-  S.fichas[mid]={
+  const oldMid=S.editing;
+  const newMid=(document.getElementById('fmid').value||oldMid).trim().toUpperCase();
+
+  const ficha={
     nombre:       document.getElementById('fn').value,
     responsable:  document.getElementById('fr').value,
     fecha:        document.getElementById('ff').value,
@@ -895,8 +899,32 @@ function saveFicha(){
     inspecciones: JSON.parse(JSON.stringify(eInsps)),
     updated:      today(),
   };
+
+  if(newMid !== oldMid){
+    // Verificar que el nuevo código no esté ya en uso
+    if(S.fichas[newMid]){
+      toast('⚠ El código '+newMid+' ya existe — elige otro');
+      return;
+    }
+    // Renombrar en el array de maquinas de la subplanta
+    const planta=S.sp.find(p=>p.maquinas.includes(oldMid));
+    if(planta){
+      const idx=planta.maquinas.indexOf(oldMid);
+      planta.maquinas[idx]=newMid;
+    }
+    // Mover la ficha a la nueva clave y borrar la antigua
+    S.fichas[newMid]=ficha;
+    delete S.fichas[oldMid];
+    // Actualizar el estado de navegación
+    S.editing=newMid;
+    if(S.maquina===oldMid) S.maquina=newMid;
+    toast('✅ Máquina renombrada de '+oldMid+' a '+newMid+' — '+eMats.length+' materiales guardados');
+  } else {
+    S.fichas[oldMid]=ficha;
+    toast('Ficha de '+oldMid+' guardada — '+eMats.length+' materiales, '+eInsps.length+' novedades');
+  }
+
   save();closeMod();render();
-  toast('Ficha de '+mid+' guardada — '+eMats.length+' materiales, '+eInsps.length+' novedades');
 }
 
 // ── ADD MAQUINA ───────────────────────────────────────────────
