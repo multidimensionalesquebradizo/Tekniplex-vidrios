@@ -673,7 +673,7 @@ function renderDetail(){
   let trows='';
   if(mats.length){
     mats.forEach((m,i)=>{
-      trows+='<tr><td style="color:var(--text3);font-family:var(--mono)">'+(i+1)+'</td>'+
+      trows+='<tr id="mat-row-'+i+'" style="transition:background .4s"><td style="color:var(--text3);font-family:var(--mono)">'+(i+1)+'</td>'+
         '<td>'+esc(m.elemento||'—')+'</td><td>'+esc(m.tipo||'—')+'</td>'+
         '<td>'+esc(m.ubicacion||'—')+'</td><td>'+esc(m.cantidad||'—')+'</td>'+
         '<td><span class="zpill '+(m.zona||'znone')+'">'+esc(ZLABEL[m.zona]||'Sin zonificar')+'</span></td>'+
@@ -1033,7 +1033,7 @@ function renderEspacioDetail(){
   let trows='';
   if(mats.length){
     mats.forEach((m,i)=>{
-      trows+='<tr><td style="color:var(--text3);font-family:var(--mono)">'+(i+1)+'</td>'+
+      trows+='<tr id="mat-row-'+i+'" style="transition:background .4s"><td style="color:var(--text3);font-family:var(--mono)">'+(i+1)+'</td>'+
         '<td>'+esc(m.elemento||'—')+'</td><td>'+esc(m.tipo||'—')+'</td>'+
         '<td>'+esc(m.ubicacion||'—')+'</td><td>'+esc(m.cantidad||'—')+'</td>'+
         '<td><span class="zpill '+(m.zona||'znone')+'">'+esc(ZLABEL[m.zona]||'Sin zonificar')+'</span></td>'+
@@ -1171,13 +1171,53 @@ document.getElementById('mov').addEventListener('click',function(e){if(e.target=
 
 // ── HASH ROUTING — QR support ─────────────────────────────────
 function routeFromHash(){
-  const hash = window.location.hash.replace('#','').trim().toUpperCase();
-  if(!hash) { render(); return; }
-  const planta = S.sp.find(p => p.maquinas.map(m=>m.toUpperCase()).includes(hash));
+  const raw = window.location.hash.replace('#','').trim();
+  if(!raw){ render(); return; }
+
+  // Separar código de máquina del índice de material: YN03|mat2 → mid=YN03, matIdx=2
+  const parts  = raw.split('|');
+  const midRaw = parts[0].toUpperCase();
+  const matIdx = parts[1] ? parseInt(parts[1].replace(/\D/g,'')) : null;
+
+  // Buscar en máquinas
+  const planta = S.sp.find(p => p.maquinas.map(m=>m.toUpperCase()).includes(midRaw));
   if(planta){
-    const realMid = planta.maquinas.find(m=>m.toUpperCase()===hash);
+    const realMid = planta.maquinas.find(m=>m.toUpperCase()===midRaw);
     S.planta  = planta.id;
     S.maquina = realMid;
+    render();
+    // Si viene un índice de material, hacer scroll y resaltar después de renderizar
+    if(matIdx !== null && !isNaN(matIdx)){
+      setTimeout(()=>{
+        const row = document.getElementById('mat-row-'+matIdx);
+        if(row){
+          row.scrollIntoView({behavior:'smooth', block:'center'});
+          row.style.background='#fff3cd';
+          setTimeout(()=>{ row.style.background=''; }, 2500);
+        }
+      }, 400);
+    }
+    return;
+  }
+
+  // Buscar en áreas/espacios
+  if(S.areas){
+    const areaKey = Object.keys(S.areas).find(k=>k.toUpperCase().includes(midRaw));
+    if(areaKey){
+      S.espacio = areaKey;
+      render();
+      if(matIdx !== null && !isNaN(matIdx)){
+        setTimeout(()=>{
+          const row = document.getElementById('mat-row-'+matIdx);
+          if(row){
+            row.scrollIntoView({behavior:'smooth', block:'center'});
+            row.style.background='#fff3cd';
+            setTimeout(()=>{ row.style.background=''; }, 2500);
+          }
+        }, 400);
+      }
+      return;
+    }
   }
   render();
 }
