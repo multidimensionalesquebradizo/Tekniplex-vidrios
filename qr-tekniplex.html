@@ -95,6 +95,11 @@
   }
 
   .qr-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  body.cols-2 .qr-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  body.cols-3 .qr-grid { grid-template-columns: repeat(3, 1fr) !important; }
+  body.cols-4 .qr-grid { grid-template-columns: repeat(4, 1fr) !important; }
+  body.cols-5 .qr-grid { grid-template-columns: repeat(5, 1fr) !important; }
+  body.cols-6 .qr-grid { grid-template-columns: repeat(6, 1fr) !important; }
 
   .qr-card {
     background: white; border: 1px solid #d6d4cc; border-radius: 10px;
@@ -215,6 +220,13 @@
       <option value="sp">Solo subplantas</option>
       <option value="area">Solo áreas de planta</option>
     </select>
+    <select class="filtro-select" id="cols-sel" onchange="cambiarColumnas(this.value)" title="QR por fila">
+      <option value="2">2 por fila (~8–10 por página)</option>
+      <option value="3">3 por fila (~12 por página)</option>
+      <option value="4" selected>4 por fila (~16 por página)</option>
+      <option value="5">5 por fila (~20 por página)</option>
+      <option value="6">6 por fila (~24 por página)</option>
+    </select>
     <button class="btn-refresh" onclick="location.reload()">↻ Recargar datos</button>
     <button class="btn-print" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
   </div>
@@ -227,6 +239,21 @@
 <div id="contenido"></div>
 
 <script>
+// ── COLUMNAS POR FILA ──────────────────────────────────────
+function cambiarColumnas(n){
+  document.body.classList.remove('cols-2','cols-3','cols-4','cols-5','cols-6');
+  document.body.classList.add('cols-'+n);
+  // Actualizar también @media print inyectando un <style> dinámico
+  const existing = document.getElementById('print-cols-style');
+  if(existing) existing.remove();
+  const s = document.createElement('style');
+  s.id = 'print-cols-style';
+  s.textContent = '@media print { .qr-grid { grid-template-columns: repeat('+n+', 1fr) !important; } }';
+  document.head.appendChild(s);
+}
+// Aplicar default al cargar
+window.addEventListener('DOMContentLoaded', ()=> cambiarColumnas(4));
+
 // ════════════════════════════════════════════════════════════
 // CONFIG — misma base de datos que tu index.html
 // ════════════════════════════════════════════════════════════
