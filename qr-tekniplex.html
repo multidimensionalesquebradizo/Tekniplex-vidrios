@@ -88,12 +88,6 @@
   .seccion-nombre { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #0a3d62; }
   .seccion-count { font-size: 10px; font-family: 'IBM Plex Mono', monospace; color: #8a887e; letter-spacing: 0.06em; text-transform: uppercase; }
 
-  .maquina-bloque { margin-bottom: 18px; }
-  .maquina-titulo {
-    font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: #5a5852;
-    margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px dashed #d6d4cc;
-  }
-
   .qr-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
   body.cols-2 .qr-grid { grid-template-columns: repeat(2, 1fr) !important; }
   body.cols-3 .qr-grid { grid-template-columns: repeat(3, 1fr) !important; }
@@ -292,6 +286,16 @@ async function cargarDatos() {
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 // ════════════════════════════════════════════════════════════
+// FILTRO: excluir manómetros dentro de EM (Equipos de medición)
+// ════════════════════════════════════════════════════════════
+function normalizar(s){
+  return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+}
+function esManometroEM(m){
+  return m.elemento === 'EM' && normalizar(m.tipo).includes('manometro');
+}
+
+// ════════════════════════════════════════════════════════════
 // CONSTRUIR LISTA UNIFICADA: subplantas (máquinas) + áreas (espacios)
 // ════════════════════════════════════════════════════════════
 function construirGrupos() {
@@ -364,18 +368,15 @@ function renderTodo(){
         </div>
       `;
 
+      // Una sola cuadrícula continua por subplanta/área: todas las tarjetas de
+      // todas sus máquinas/espacios se acomodan seguidas, sin cortar por máquina,
+      // para no dejar huecos en blanco al imprimir. Cada tarjeta ya muestra su
+      // propio código de máquina, así que no se pierde la identificación.
+      const grid = document.createElement('div');
+      grid.className = 'qr-grid';
+
       grupo.items.forEach(item => {
         totalItems++;
-        const bloque = document.createElement('div');
-        bloque.className = 'maquina-bloque';
-
-        const tituloMaq = document.createElement('div');
-        tituloMaq.className = 'maquina-titulo';
-        tituloMaq.textContent = item.codigo + (item.nombreVisible ? '  —  ' + item.nombreVisible : '');
-        bloque.appendChild(tituloMaq);
-
-        const grid = document.createElement('div');
-        grid.className = 'qr-grid';
 
         if (item.materiales.length === 0) {
           const qid = 'qr_' + item.codigo.replace(/[^a-zA-Z0-9]/g,'_');
@@ -399,6 +400,7 @@ function renderTodo(){
           requestAnimationFrame(()=> generarQR(qid, BASE_URL + '#' + item.codigo));
         } else {
           item.materiales.forEach((mat, idx) => {
+            if (esManometroEM(mat)) return; // excluir manómetros dentro de EM
             const qid = 'qr_' + item.codigo.replace(/[^a-zA-Z0-9]/g,'_') + '_m' + idx;
             const url = BASE_URL + '#' + item.codigo + '|mat' + idx;
             const card = document.createElement('div');
@@ -421,12 +423,12 @@ function renderTodo(){
             requestAnimationFrame(()=> generarQR(qid, url));
           });
         }
-
-        bloque.appendChild(grid);
-        seccion.appendChild(bloque);
       });
 
-      contenido.appendChild(seccion);
+      if (grid.children.length > 0) {
+        seccion.appendChild(grid);
+        contenido.appendChild(seccion);
+      }
     });
   }
 
