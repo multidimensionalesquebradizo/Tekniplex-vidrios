@@ -336,7 +336,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
     <div class="insp-body">
       <div class="insp-tabs">
         <button class="insp-tab active" id="itab-cron" onclick="inspTab('cronograma',this)">📅 Cronograma programado</button>
-        <button class="insp-tab" id="itab-reg" onclick="inspTab('registrar',this)">✏ Registrar inspección</button>
+        <button class="insp-tab" id="itab-reg" onclick="inspEditIdx=null;inspTab('registrar',this)">✏ Registrar inspección</button>
         <button class="insp-tab" id="itab-hist" onclick="inspTab('historial',this)">📂 Historial realizadas</button>
       </div>
       <div id="insp-tab-cronograma" class="insp-tab-content active"></div>
@@ -423,6 +423,7 @@ const SP_DEF = [
 ];
 
 let S = {sp:[],fichas:{},areas:{},fichasAreas:{},inspecciones:[],planta:null,maquina:null,area:null,espacio:null,edit:false,editing:null,modo:'sp'};
+let inspEditIdx=null; // índice de la inspección global que se está editando (null = nueva)
 let eMats=[], eInsps=[];
 
 async function save(){
@@ -1407,8 +1408,13 @@ function renderCronograma(){
 }
 
 function renderFormInsp(){
+  const ins=(inspEditIdx!=null && S.inspecciones && S.inspecciones[inspEditIdx])?S.inspecciones[inspEditIdx]:null;
   document.getElementById('insp-tab-registrar').innerHTML=`
     <div style="max-width:680px">
+      ${ins?`<div style="background:var(--accent-light);color:var(--accent);font-size:12px;font-weight:600;padding:9px 13px;border-radius:7px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <span>✏ Editando inspección del ${esc((ins.fecha||'').split('-').reverse().join('/'))}</span>
+        <span style="cursor:pointer;text-decoration:underline;white-space:nowrap" onclick="inspEditIdx=null;renderFormInsp();">Cancelar edición</span>
+      </div>`:''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
         <div class="fg"><label class="fl">Fecha de realización *</label>
           <input class="fi" type="date" id="insp-fecha" value="${today()}"></div>
@@ -1443,16 +1449,27 @@ function renderFormInsp(){
         <textarea class="fta" id="insp-acciones" placeholder="¿Qué se hizo? Reemplazos, reportes, notificaciones…" style="min-height:60px"></textarea></div>
       <div class="fg" style="margin-bottom:16px"><label class="fl">Observaciones adicionales</label>
         <textarea class="fta" id="insp-obs" placeholder="Notas generales…" style="min-height:60px"></textarea></div>
-      <button class="btn btn-p" onclick="guardarInsp()" style="background:#0f4c91;border-color:#0a3568">💾 Guardar inspección</button>
+      <button class="btn btn-p" onclick="guardarInsp()" style="background:#0f4c91;border-color:#0a3568">${ins?'💾 Guardar cambios':'💾 Guardar inspección'}</button>
     </div>`;
+  if(ins){
+    document.getElementById('insp-fecha').value=ins.fecha||'';
+    document.getElementById('insp-resp').value=ins.responsable||'';
+    document.getElementById('insp-zona').value=ins.zona||'';
+    document.getElementById('insp-grupo').value=ins.grupo||'';
+    document.getElementById('insp-estado').value=ins.estado||'Realizada';
+    document.getElementById('insp-subplantas').value=ins.subplantas||'';
+    document.getElementById('insp-hallazgos').value=ins.hallazgos||'';
+    document.getElementById('insp-acciones').value=ins.acciones||'';
+    document.getElementById('insp-obs').value=ins.observaciones||'';
+  }
 }
 
 async function guardarInsp(){
   const fecha=document.getElementById('insp-fecha').value;
   const resp=document.getElementById('insp-resp').value.trim();
   if(!fecha||!resp){toast('⚠ Completa fecha y responsable');return;}
-  const insp={
-    id:Date.now(), fecha, responsable:resp,
+  const datos={
+    fecha, responsable:resp,
     zona:document.getElementById('insp-zona').value,
     grupo:document.getElementById('insp-grupo').value,
     estado:document.getElementById('insp-estado').value,
@@ -1460,12 +1477,19 @@ async function guardarInsp(){
     hallazgos:document.getElementById('insp-hallazgos').value.trim(),
     acciones:document.getElementById('insp-acciones').value.trim(),
     observaciones:document.getElementById('insp-obs').value.trim(),
-    registrado:today(),
   };
   if(!Array.isArray(S.inspecciones)) S.inspecciones=[];
-  S.inspecciones.unshift(insp);
-  await save();
-  toast('✅ Inspección guardada');
+  if(inspEditIdx!=null && S.inspecciones[inspEditIdx]){
+    const prev=S.inspecciones[inspEditIdx];
+    S.inspecciones[inspEditIdx]=Object.assign({},prev,datos,{editado:today()});
+    inspEditIdx=null;
+    await save();
+    toast('✅ Inspección actualizada');
+  } else {
+    S.inspecciones.unshift(Object.assign({id:Date.now(),registrado:today()},datos));
+    await save();
+    toast('✅ Inspección guardada');
+  }
   document.getElementById('itab-hist').click();
 }
 
@@ -1488,7 +1512,10 @@ function renderHistorialInsp(){
           ${ins.zona?`<span class="${zonaClass(ins.zona.split(' —')[0])}">${esc(ins.zona)}</span>`:''}
           ${ins.grupo?`<span style="font-size:11px;color:var(--text3)">${esc(ins.grupo)}</span>`:''}
         </div>
-        ${S.edit?`<button class="insp-reg-del" onclick="delInspGlobal(${idx})">🗑</button>`:''}
+        ${S.edit?`<div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="insp-reg-del" onclick="editInspGlobal(${idx})" title="Editar inspección" style="color:var(--accent2)">✏</button>
+          <button class="insp-reg-del" onclick="delInspGlobal(${idx})" title="Eliminar inspección">🗑</button>
+        </div>`:''}
       </div>
       <div class="insp-reg-body">
         <div style="margin-bottom:4px"><strong>Inspector:</strong> ${esc(ins.responsable||'—')}</div>
@@ -1502,9 +1529,15 @@ function renderHistorialInsp(){
   document.getElementById('insp-tab-historial').innerHTML=html;
 }
 
+function editInspGlobal(idx){
+  inspEditIdx=idx;
+  inspTab('registrar', document.getElementById('itab-reg'));
+}
+
 async function delInspGlobal(idx){
   if(!confirm('¿Eliminar esta inspección?')) return;
   S.inspecciones.splice(idx,1);
+  if(inspEditIdx===idx) inspEditIdx=null;
   await save();
   renderHistorialInsp();
   toast('Inspección eliminada');
