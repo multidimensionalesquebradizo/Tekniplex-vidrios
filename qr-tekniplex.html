@@ -292,7 +292,17 @@ function normalizar(s){
   return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 }
 function esManometroEM(m){
-  return m.elemento === 'EM' && normalizar(m.tipo).includes('manometro');
+  if (m.elemento !== 'EM') return false;
+  const texto = normalizar(m.tipo);
+  // Lista de instrumentos de medición que NO deben generar QR.
+  // Para excluir uno nuevo, solo agrega la palabra clave (sin tildes) aquí abajo.
+  const EXCLUIDOS_EM = [
+    'manometro',
+    'amperimetro',
+    'voltimetro',
+    'medidor de aire'
+  ];
+  return EXCLUIDOS_EM.some(palabra => texto.includes(palabra));
 }
 
 // ════════════════════════════════════════════════════════════
@@ -391,7 +401,7 @@ function renderTodo(){
             </div>
             <div class="qr-body">
               <div class="qr-img" id="${qid}"></div>
-              <div class="qr-mid">${esc(item.codigo)}</div>
+              <div class="qr-mid">${esc(item.nombreVisible || item.codigo)}</div>
               <span class="qr-sub generico-tag">Ficha general</span>
             </div>
           `;
@@ -414,7 +424,7 @@ function renderTodo(){
               </div>
               <div class="qr-body">
                 <div class="qr-img" id="${qid}"></div>
-                <div class="qr-mid">${esc(item.codigo)}</div>
+                <div class="qr-mid">${esc(item.nombreVisible || item.codigo)}</div>
                 <span class="qr-sub">Material #${idx+1}</span>
               </div>
             `;
