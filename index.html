@@ -1579,9 +1579,10 @@ function exportExcel(){
 
   // ── HOJA 1: RESUMEN GENERAL ──────────────────────────────
   const resumen = [
-    ['TEKNIPLEX — RESUMEN GENERAL DE MATERIALES QUEBRADIZOS'],
+    ['TEKNIPLEX — RESUMEN GENERAL DE MATERIALES QUEBRADIZOS (TODA LA PLANTA)'],
     ['Fecha de exportación:', new Date().toLocaleDateString('es-CO')],
     [],
+    ['SUBPLANTAS'],
     ['Subplanta','Total Máquinas','Máquinas con Datos','Total Materiales','Zona 1 (Crítico alto)','Zona 2 (Crítico)','Zona 3 (No crítico)','Zona 4 (Bajo riesgo)','Sin zonificar','% Completitud']
   ];
   S.sp.forEach(p=>{
@@ -1600,19 +1601,61 @@ function exportExcel(){
       p.maquinas.length>0 ? Math.round(conDatos/p.maquinas.length*100)+'%' : '0%'
     ]);
   });
-  // Totales
-  const allMats = Object.values(S.fichas).flatMap(f=>f.materiales||[]);
+  // Subtotal máquinas
+  const matsMaqTot = Object.values(S.fichas).flatMap(f=>f.materiales||[]);
   const totalMaq = S.sp.reduce((a,p)=>a+p.maquinas.length,0);
   const conDatosTot = S.sp.reduce((a,p)=>a+p.maquinas.filter(m=>S.fichas[m]&&(S.fichas[m].materiales||[]).length>0).length,0);
   resumen.push([]);
-  resumen.push(['TOTAL',totalMaq,conDatosTot,allMats.length,
+  resumen.push(['SUBTOTAL MÁQUINAS',totalMaq,conDatosTot,matsMaqTot.length,
+    matsMaqTot.filter(m=>m.zona==='z1').length,matsMaqTot.filter(m=>m.zona==='z2').length,
+    matsMaqTot.filter(m=>m.zona==='z3').length,matsMaqTot.filter(m=>m.zona==='z4').length,
+    matsMaqTot.filter(m=>!m.zona||m.zona==='none').length,
+    totalMaq>0?Math.round(conDatosTot/totalMaq*100)+'%':'0%'
+  ]);
+
+  // ── ÁREAS DE PLANTA (dentro de la misma hoja) ─────────────
+  resumen.push([]);
+  resumen.push(['ÁREAS DE PLANTA']);
+  resumen.push(['Área','Total Espacios','Espacios con Datos','Total Materiales','Zona 1 (Crítico alto)','Zona 2 (Crítico)','Zona 3 (No crítico)','Zona 4 (Bajo riesgo)','Sin zonificar','% Completitud']);
+  Object.entries(S.areas||{}).forEach(([aid,area])=>{
+    const espacios = area.espacios||[];
+    const conDatosA = espacios.filter(eid=>S.fichasAreas[eid]&&(S.fichasAreas[eid].materiales||[]).length>0).length;
+    const mats = espacios.flatMap(eid=>(S.fichasAreas[eid]||{}).materiales||[]);
+    resumen.push([
+      area.nombre||aid,
+      espacios.length,
+      conDatosA,
+      mats.length,
+      mats.filter(m=>m.zona==='z1').length,
+      mats.filter(m=>m.zona==='z2').length,
+      mats.filter(m=>m.zona==='z3').length,
+      mats.filter(m=>m.zona==='z4').length,
+      mats.filter(m=>!m.zona||m.zona==='none').length,
+      espacios.length>0 ? Math.round(conDatosA/espacios.length*100)+'%' : '0%'
+    ]);
+  });
+  const matsAreaTot = Object.values(S.fichasAreas||{}).flatMap(f=>f.materiales||[]);
+  const totalEsp = Object.values(S.areas||{}).reduce((a,ar)=>a+(ar.espacios||[]).length,0);
+  const conDatosEspTot = Object.values(S.areas||{}).reduce((a,ar)=>a+(ar.espacios||[]).filter(eid=>S.fichasAreas[eid]&&(S.fichasAreas[eid].materiales||[]).length>0).length,0);
+  resumen.push([]);
+  resumen.push(['SUBTOTAL ÁREAS',totalEsp,conDatosEspTot,matsAreaTot.length,
+    matsAreaTot.filter(m=>m.zona==='z1').length,matsAreaTot.filter(m=>m.zona==='z2').length,
+    matsAreaTot.filter(m=>m.zona==='z3').length,matsAreaTot.filter(m=>m.zona==='z4').length,
+    matsAreaTot.filter(m=>!m.zona||m.zona==='none').length,
+    totalEsp>0?Math.round(conDatosEspTot/totalEsp*100)+'%':'0%'
+  ]);
+
+  // ── TOTAL PLANTA (máquinas + áreas) ───────────────────────
+  const allMats = matsMaqTot.concat(matsAreaTot);
+  resumen.push([]);
+  resumen.push(['TOTAL PLANTA (MÁQUINAS + ÁREAS)',totalMaq+totalEsp,conDatosTot+conDatosEspTot,allMats.length,
     allMats.filter(m=>m.zona==='z1').length,allMats.filter(m=>m.zona==='z2').length,
     allMats.filter(m=>m.zona==='z3').length,allMats.filter(m=>m.zona==='z4').length,
     allMats.filter(m=>!m.zona||m.zona==='none').length,
-    totalMaq>0?Math.round(conDatosTot/totalMaq*100)+'%':'0%'
+    (totalMaq+totalEsp)>0?Math.round((conDatosTot+conDatosEspTot)/(totalMaq+totalEsp)*100)+'%':'0%'
   ]);
   const wsRes = XLSX.utils.aoa_to_sheet(resumen);
-  wsRes['!cols']=[{wch:22},{wch:16},{wch:18},{wch:16},{wch:20},{wch:16},{wch:18},{wch:18},{wch:14},{wch:14}];
+  wsRes['!cols']=[{wch:26},{wch:16},{wch:18},{wch:16},{wch:20},{wch:16},{wch:18},{wch:18},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb, wsRes, 'Resumen General');
 
   // ── HOJA 2: TODOS LOS MATERIALES ─────────────────────────
@@ -1951,7 +1994,9 @@ function closeDash(){
 function renderDash(){
   const zlbl2={z1:'Zona 1 — Crítico alto',z2:'Zona 2 — Crítico',z3:'Zona 3 — No crítico',z4:'Zona 4 — Bajo riesgo',none:'Sin zonificar'};
   const zcolor={z1:'#8b2020',z2:'#b84000',z3:'#7a4a00',z4:'#1a6b38',none:'#8a887e'};
-  const allMats = Object.values(S.fichas).flatMap(f=>f.materiales||[]);
+  const matsMaquinas = Object.values(S.fichas).flatMap(f=>f.materiales||[]);
+  const matsAreas = Object.values(S.fichasAreas||{}).flatMap(f=>f.materiales||[]);
+  const allMats = matsMaquinas.concat(matsAreas); // TOTAL de planta: máquinas + áreas
   const allInsps = Object.values(S.fichas).flatMap(f=>f.inspecciones||[]);
   const totalMaq = S.sp.reduce((a,p)=>a+p.maquinas.length,0);
   const conDatos = S.sp.reduce((a,p)=>a+p.maquinas.filter(m=>S.fichas[m]&&(S.fichas[m].materiales||[]).length>0).length,0);
@@ -1974,6 +2019,13 @@ function renderDash(){
   }).sort((a,b)=>b.total-a.total).slice(0,8);
   const maxSP = porSP.length?porSP[0].total:1;
 
+  // por área de planta (laboratorios, oficinas, pasillos, etc.)
+  const porArea = Object.entries(S.areas||{}).map(([aid,area])=>{
+    const mats=(area.espacios||[]).flatMap(eid=>(S.fichasAreas[eid]||{}).materiales||[]);
+    return {nombre:area.nombre||aid, total:mats.length, z1:mats.filter(m=>m.zona==='z1').length, espacios:(area.espacios||[]).length};
+  }).sort((a,b)=>b.total-a.total);
+  const maxArea = porArea.length?Math.max(1,...porArea.map(a=>a.total)):1;
+
   // máquinas más críticas (zona 1)
   const criticas=[];
   S.sp.forEach(p=>{
@@ -1985,22 +2037,6 @@ function renderDash(){
   });
   criticas.sort((a,b)=>b.z1count-a.z1count);
   const top10=criticas.slice(0,10);
-
-  // próximas inspecciones vencidas o por vencer
-  const hoy=new Date(); hoy.setHours(0,0,0,0);
-  const proximas=[];
-  S.sp.forEach(p=>{
-    p.maquinas.forEach(mid=>{
-      const f=S.fichas[mid]||{};
-      if(f.proxima){
-        const d=new Date(f.proxima+'T00:00:00');
-        const dias=Math.round((d-hoy)/(1000*60*60*24));
-        proximas.push({mid,nombre:f.nombre||'',sp:p.nombre,fecha:f.proxima,dias});
-      }
-    });
-  });
-  proximas.sort((a,b)=>a.dias-b.dias);
-  const urgentes=proximas.slice(0,8);
 
   // ── KPIs ─────────────────────────────────────────────────
   const kpis=`<div class="kpi-grid">
@@ -2053,6 +2089,16 @@ function renderDash(){
     </div>`;
   }).join('');
 
+  // ── BARRAS POR ÁREA DE PLANTA ─────────────────────────────
+  const barsArea=porArea.map(a=>{
+    const pct=maxArea?Math.round(a.total/maxArea*100):0;
+    return `<div class="bar-row">
+      <span class="bar-lbl">${esc(a.nombre)} <span style="color:var(--text3);font-weight:400">(${a.espacios} espacio${a.espacios!==1?'s':''})</span></span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${a.z1>0?'#8b2020':'#0f5fa8'}"></div></div>
+      <span class="bar-num">${a.total} mat${a.total!==1?'s':''} ${a.z1>0?'· '+a.z1+' Z1':''}</span>
+    </div>`;
+  }).join('');
+
   // ── BARRAS POR ELEMENTO ───────────────────────────────────
   const elblMap={};
   ELEMS.forEach(e=>elblMap[e.id]=e.desc);
@@ -2074,19 +2120,6 @@ function renderDash(){
     }</tbody></table>`
     :'<p style="color:var(--text3);font-size:13px">No hay máquinas con materiales de Zona 1 registrados.</p>';
 
-  // ── TABLA PRÓXIMAS INSPECCIONES ───────────────────────────
-  const tabProx=urgentes.length
-    ?`<table class="dash-table"><thead><tr><th>Máquina</th><th>Nombre</th><th>Subplanta</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>${
-      urgentes.map(x=>{
-        const color=x.dias<0?'#8b2020':x.dias<=7?'#b84000':x.dias<=30?'#7a4a00':'#1a6b38';
-        const label=x.dias<0?`Vencida hace ${Math.abs(x.dias)}d`:x.dias===0?'Hoy':x.dias<=7?`En ${x.dias} días`:x.dias<=30?`En ${x.dias} días`:`En ${x.dias} días`;
-        return `<tr><td>${esc(x.mid)}</td><td>${esc(x.nombre)}</td><td>${esc(x.sp)}</td>
-          <td style="font-family:monospace">${x.fecha}</td>
-          <td><span style="background:${color}22;color:${color};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${label}</span></td></tr>`;
-      }).join('')
-    }</tbody></table>`
-    :'<p style="color:var(--text3);font-size:13px">No hay fechas de próxima inspección registradas.</p>';
-
   // ── RENDER FINAL ──────────────────────────────────────────
   document.getElementById('dash-body').innerHTML=`
     <div class="dash-card"><h3>Indicadores clave</h3>${kpis}</div>
@@ -2107,7 +2140,9 @@ function renderDash(){
       <div class="dash-card"><h3>Máquinas con mayor riesgo (Zona 1)</h3>${tabCriticas}</div>
     </div>
 
-    <div class="dash-card"><h3>Próximas inspecciones — más urgentes</h3>${tabProx}</div>
+    <div class="dash-card"><h3>Materiales por área de planta</h3>
+      <div class="bar-chart">${barsArea||'<p style="color:var(--text3);font-size:13px">Sin áreas de planta registradas.</p>'}</div>
+    </div>
 
     <div style="text-align:right;padding:4px 0">
       <button class="btn btn-excel" onclick="exportExcel()" style="background:#1d6f42;color:#fff;border-color:#155230">📥 Exportar todo a Excel</button>
