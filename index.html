@@ -1051,6 +1051,21 @@ function renderEspacioDetail(){
       }
     });
   }
+  const matSection=mats.length
+    ?'<table class="mtable"><thead><tr><th>#</th><th>Elemento</th><th>Descripción</th><th>Ubicación</th><th>Cantidad</th><th>Zona</th><th>Observación</th></tr></thead><tbody>'+trows+'</tbody></table>'
+    :'<p style="font-size:13px;color:var(--text3)">No hay materiales registrados.</p>';
+
+  let irows='';
+  if(insps.length){
+    insps.slice().reverse().forEach(i=>{
+      irows+='<div class="ihrow"><span class="ihdate">'+esc(i.fecha)+'</span><span class="ihtxt">'+esc(i.texto)+'</span></div>';
+    });
+  }
+  const inspSection=insps.length?'<div class="ihist">'+irows+'</div>':'<p style="font-size:13px;color:var(--text3)">No hay inspecciones registradas.</p>';
+
+  document.getElementById('mc').innerHTML=
+    '<div class="dgrid"><div class="dcard">'+
+    '<div class="dchdr"><div><div class="did">'+esc(nombre.replace(/_/g,' '))+'</div><div class="dname">'+esc(f.nombre||'Sin nombre')+'</div></div>'+
     '<span class="zpill '+wz+'" style="font-size:12px;padding:5px 12px">'+esc(ZLABEL[wz])+'</span></div>'+
     '<div class="dsec"><div class="dsect">Información general</div>'+
     '<div class="drow"><span class="dkey">Responsable</span><span class="dval">'+esc(f.responsable||'—')+'</span></div>'+
