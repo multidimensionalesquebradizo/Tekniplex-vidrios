@@ -1185,9 +1185,19 @@ function closeMod(){
 }
 document.getElementById('mov').addEventListener('click',function(e){if(e.target===this)closeMod();});
 
-// ── HASH ROUTING — QR support ─────────────────────────────────
+// ── ROUTING (QR support) ──────────────────────────────────────
+// Soporta dos formatos:
+//  - Nuevo: ?c=CODIGO&m=N  → recomendado, evita que iOS borre el link al escanear con la Cámara
+//  - Antiguo: #CODIGO|matN → se mantiene por compatibilidad con etiquetas QR ya impresas
 function routeFromHash(){
-  const raw = window.location.hash.replace('#','').trim();
+  const params = new URLSearchParams(window.location.search);
+  let raw;
+  if(params.has('c')){
+    raw = params.get('c') + (params.has('m') ? '|mat'+params.get('m') : '');
+  } else {
+    raw = window.location.hash.replace('#','').trim();
+  }
+  raw = (raw||'').trim();
   if(!raw){ render(); return; }
 
   // Separar código de máquina del índice de material: YN03|mat2 → mid=YN03, matIdx=2
