@@ -286,23 +286,30 @@ async function cargarDatos() {
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 // ════════════════════════════════════════════════════════════
-// FILTRO: excluir manómetros dentro de EM (Equipos de medición)
+// FILTRO: materiales que NO deben generar QR
 // ════════════════════════════════════════════════════════════
 function normalizar(s){
   return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 }
-function esManometroEM(m){
-  if (m.elemento !== 'EM') return false;
+function debeExcluirseQR(m){
   const texto = normalizar(m.tipo);
-  // Lista de instrumentos de medición que NO deben generar QR.
+
+  // Instrumentos de medición dentro de EM que NO deben generar QR.
   // Para excluir uno nuevo, solo agrega la palabra clave (sin tildes) aquí abajo.
-  const EXCLUIDOS_EM = [
-    'manometro',
-    'amperimetro',
-    'voltimetro',
-    'medidor de aire'
-  ];
-  return EXCLUIDOS_EM.some(palabra => texto.includes(palabra));
+  if (m.elemento === 'EM') {
+    const EXCLUIDOS_EM = [
+      'manometro',
+      'amperimetro',
+      'voltimetro',
+      'medidor de aire'
+    ];
+    if (EXCLUIDOS_EM.some(palabra => texto.includes(palabra))) return true;
+  }
+
+  // Lámparas: se excluyen TODAS, EXCEPTO las de emergencia
+  if (texto.includes('lampara') && !texto.includes('emergencia')) return true;
+
+  return false;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -410,7 +417,7 @@ function renderTodo(){
           requestAnimationFrame(()=> generarQR(qid, BASE_URL + '?c=' + encodeURIComponent(item.codigo)));
         } else {
           item.materiales.forEach((mat, idx) => {
-            if (esManometroEM(mat)) return; // excluir manómetros dentro de EM
+            if (debeExcluirseQR(mat)) return; // excluir manómetros/amperímetros/voltímetros/medidores de aire (EM) y lámparas que no sean de emergencia
             const qid = 'qr_' + item.codigo.replace(/[^a-zA-Z0-9]/g,'_') + '_m' + idx;
             const url = BASE_URL + '?c=' + encodeURIComponent(item.codigo) + '&m=' + idx;
             const card = document.createElement('div');
